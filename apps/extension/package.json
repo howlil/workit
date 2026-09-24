@@ -1,0 +1,28 @@
+{
+  "name": "@workit/extension",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "@workit/domain": "workspace:*",
+    "@workit/contracts": "workspace:*",
+    "@workit/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "wxt": "^0.20.5",
+    "@wxt-dev/module-react": "^1.1.3",
+    "typescript": "catalog:",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "@types/chrome": "^0.0.318",
+    "@playwright/test": "^1.52.0"
+  }
+}

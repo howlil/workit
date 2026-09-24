@@ -1,0 +1,23 @@
+{
+  "name": "@workit/worker",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run --outdir=dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.7.11",
+    "@workit/domain": "workspace:*",
+    "@workit/contracts": "workspace:*",
+    "@workit/db": "workspace:*",
+    "@workit/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "wrangler": "^4.18.0",
+    "@cloudflare/workers-types": "^5.20260921.1",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.output/
+.wxt/
+.dev.vars
+.mf/
+.wrangler/
+
+# Editor
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage/
+
+# Env
+.env
+.env.local

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hostile CSS Test Page</title>
+  <style>
+    /* Aggressive global CSS that tries to break injected UI */
+    * {
+      box-sizing: content-box !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    button {
+      all: unset !important;
+      background: red !important;
+      color: white !important;
+      font-size: 8px !important;
+      border: none !important;
+      border-radius: 0 !important;
+      cursor: default !important;
+    }
+
+    div {
+      font-family: "Comic Sans MS", cursive !important;
+      color: magenta !important;
+      font-size: 40px !important;
+      line-height: 3 !important;
+    }
+
+    /* Try to hide fixed-position elements */
+    [style*="position: fixed"],
+    [style*="position:fixed"] {
+      display: none !important;
+    }
+
+    /* Override common UI patterns */
+    .popup, .modal, .overlay, .floating {
+      display: none !important;
+      visibility: hidden !important;
+    }
+  </style>
+</head>
+<body>
+  <h1>This page has hostile CSS</h1>
+  <p>If you can read this in magenta Comic Sans at 40px, the hostile CSS is working.</p>
+  <button>This button should be red with no styling</button>
+  <div>This div should be huge magenta text</div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+name = "workit-api"
+main = "src/index.ts"
+compatibility_date = "2025-05-21"
+
+# D1 binding — will be configured when D1 is provisioned
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "workit-db"
+# database_id = "<to-be-provisioned>"

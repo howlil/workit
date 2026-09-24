@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": ["chrome"]
+  },
+  "include": [
+    "src",
+    "entrypoints",
+    "*.config.ts",
+    ".wxt/types"
+  ],
+  "exclude": ["node_modules", "dist", ".output"]
+}

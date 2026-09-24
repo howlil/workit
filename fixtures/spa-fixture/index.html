@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SPA Fixture</title>
+  <style>
+    body { font-family: Inter, sans-serif; color: #444; padding: 24px; }
+    nav { margin-bottom: 24px; }
+    nav a { margin-right: 16px; color: #2F7D44; cursor: pointer; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a onclick="navigate('/')">Home</a>
+    <a onclick="navigate('/jobs/123')">Job Page</a>
+    <a onclick="navigate('/about')">About</a>
+  </nav>
+  <div id="app">
+    <h1>Home</h1>
+    <p>This is the home page of the SPA fixture.</p>
+  </div>
+
+  <script>
+    function navigate(path) {
+      history.pushState({}, '', path);
+      render();
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      const path = location.pathname;
+
+      if (path.startsWith('/jobs/')) {
+        app.innerHTML = `
+          <h1>Software Engineer</h1>
+          <div class="company">SPA Corp</div>
+          <div class="location">Remote</div>
+          <p>This is a job page within a single-page application.</p>
+          <a href="/apply">Apply Now</a>
+        `;
+      } else if (path === '/about') {
+        app.innerHTML = `
+          <h1>About</h1>
+          <p>This is an about page. Not a job.</p>
+        `;
+      } else {
+        app.innerHTML = `
+          <h1>Home</h1>
+          <p>This is the home page of the SPA fixture.</p>
+        `;
+      }
+    }
+
+    window.addEventListener('popstate', render);
+  </script>
+</body>
+</html>
