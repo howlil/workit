@@ -16,3 +16,15 @@ export type {
   ProfileSkill,
   FullCareerProfile,
 } from "./profile/types.js";
+export type {
+  Application,
+  ApplicationState,
+  ApplicationAction,
+  ApplicationEvent,
+  SubmittedAnswer,
+} from "./application/types.js";
+export {
+  transitionApplication,
+  InvalidStateTransitionError,
+} from "./application/lifecycle.js";
+

@@ -576,4 +576,81 @@ test.describe("S6 — Basic Autofill E2E", () => {
   });
 });
 
+test.describe("S7 — Application Lifecycle + Historical Snapshot E2E", () => {
+  test("saved opportunity -> start application (applying) -> confirm submission -> transitions to applied -> visible under applied filter in workspace", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${serverPort}/jobs/json-ld-complete.html`);
+
+    const workitHost = page.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    // 1. Open popup and save the job
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    const saveBtn = workitHost.locator('[data-testid="workit-save-job-btn"]');
+    await expect(saveBtn).toBeVisible({ timeout: 5000 });
+    await saveBtn.click();
+
+    const savedView = workitHost.locator('[data-testid="workit-saved-view"]');
+    await expect(savedView).toBeVisible({ timeout: 5000 });
+
+    // 2. Click "I'm applying" -> starts application
+    const applyingBtn = workitHost.locator('[data-testid="workit-applying-btn"]');
+    await expect(applyingBtn).toBeVisible();
+    await applyingBtn.click();
+
+    // 3. Verify transition to applying state and submission confirmation prompt
+    await expect(workitHost.locator('[data-testid="applying-status-chip"]')).toBeVisible({ timeout: 5000 });
+    const submissionBox = workitHost.locator('[data-testid="workit-submission-box"]');
+    await expect(submissionBox).toBeVisible();
+
+    const confirmSubmitBtn = workitHost.locator('[data-testid="workit-confirm-submit-btn"]');
+    await expect(confirmSubmitBtn).toBeVisible();
+
+    // 4. Click "Confirm Submission ✓"
+    await confirmSubmitBtn.click();
+
+    // 5. Verify transition to "Applied ✓"
+    const appliedBadge = workitHost.locator('[data-testid="applied-status-badge"]');
+    await expect(appliedBadge).toBeVisible({ timeout: 5000 });
+
+    // 6. Navigate to Workspace
+    let [background] = context.serviceWorkers();
+    if (!background) {
+      background = await context.waitForEvent("serviceworker");
+    }
+    const extensionId = background.url().split("/")[2];
+
+    const wsPage = await context.newPage();
+    await wsPage.goto(`chrome-extension://${extensionId}/workspace.html`);
+
+    // 7. Click "Applied" filter chip
+    await wsPage.click('[data-testid="filter-applied"]');
+
+    // 8. Assert opportunity row appears with status "applied"
+    const oppTable = wsPage.locator('[data-testid="jobs-table"]');
+    await expect(oppTable).toBeVisible({ timeout: 5000 });
+
+    const rowTitle = wsPage.locator('[data-testid="opp-row-title"]');
+    await expect(rowTitle).toHaveText("Software Engineer");
+
+    const rowStatus = wsPage.locator('[data-testid="opp-row-status"]');
+    await expect(rowStatus).toHaveText("applied");
+
+    await context.close();
+  });
+});
+
+
 

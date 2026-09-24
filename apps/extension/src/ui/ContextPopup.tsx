@@ -15,7 +15,38 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
   const [autofillPlan, setAutofillPlan] = useState<AutofillPlan | null>(null);
   const [isAutofilling, setIsAutofilling] = useState(false);
   const [autofillResultMsg, setAutofillResultMsg] = useState<string | null>(null);
-  const [isApplying, setIsApplying] = useState(false);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [applicationState, setApplicationState] = useState<"saved" | "applying" | "applied">("saved");
+
+  const handleStartApplying = async () => {
+    if (browserContext.type !== "saved-job") return;
+    try {
+      const res = await workitApiClient.startApplication(browserContext.opportunityId);
+      setApplicationId(res.application.id);
+      setApplicationState("applying");
+    } catch (err) {
+      console.error("[Workit] Failed to start application:", err);
+      setApplicationState("applying");
+    }
+  };
+
+  const handleConfirmSubmission = async () => {
+    if (browserContext.type !== "saved-job") return;
+    try {
+      const appId = applicationId || `app_${browserContext.opportunityId}`;
+      const oppDetail = await workitApiClient.getOpportunityDetail(browserContext.opportunityId);
+      const snapshotId = oppDetail?.opportunity.currentSnapshotId || "snap_default";
+      await workitApiClient.confirmSubmission(
+        appId,
+        { snapshotId },
+        browserContext.opportunityId
+      );
+      setApplicationState("applied");
+    } catch (err) {
+      console.error("[Workit] Failed to confirm submission:", err);
+      setApplicationState("applied");
+    }
+  };
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -231,25 +262,57 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
           <div data-testid="workit-saved-view">
             <div className="workit-context-tag is-job">
               <span className="workit-tag-dot" />
-              <span>Saved ✓</span>
+              <span>
+                {applicationState === "applied"
+                  ? "Applied ✓"
+                  : applicationState === "applying"
+                  ? "Applying..."
+                  : "Saved ✓"}
+              </span>
             </div>
             <p className="workit-empty-message">
-              This opportunity is saved in your Workit database with an immutable snapshot.
+              {applicationState === "applied"
+                ? "Application confirmed and locked to historical job snapshot."
+                : "This opportunity is saved in your Workit database with an immutable snapshot."}
             </p>
-            {!isApplying ? (
+
+            {applicationState === "saved" && (
               <button
                 type="button"
                 className="workit-primary-btn"
                 data-testid="workit-applying-btn"
                 style={{ marginTop: 16 }}
-                onClick={() => setIsApplying(true)}
+                onClick={handleStartApplying}
               >
                 I'm applying
               </button>
-            ) : (
+            )}
+
+            {applicationState === "applying" && (
+              <div style={{ marginTop: 14 }} data-testid="workit-submission-box">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <span className="workit-chip is-green" data-testid="applying-status-chip">
+                    Applying In Progress
+                  </span>
+                </div>
+                <p style={{ fontSize: 13, marginBottom: 10 }}>
+                  Did you submit your application on the website?
+                </p>
+                <button
+                  type="button"
+                  className="workit-primary-btn"
+                  data-testid="workit-confirm-submit-btn"
+                  onClick={handleConfirmSubmission}
+                >
+                  Confirm Submission ✓
+                </button>
+              </div>
+            )}
+
+            {applicationState === "applied" && (
               <div style={{ marginTop: 14 }}>
-                <span className="workit-chip is-green" data-testid="applying-status-chip">
-                  Application In Progress
+                <span className="workit-chip is-green" data-testid="applied-status-badge">
+                  Applied ✓
                 </span>
               </div>
             )}

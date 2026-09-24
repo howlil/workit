@@ -2,12 +2,15 @@ import { Hono } from "hono";
 import {
   D1OpportunityRepository,
   D1ProfileRepository,
+  D1ApplicationRepository,
   type D1DatabaseLike,
 } from "@workit/db";
 import { OpportunityService } from "./services/opportunity.js";
 import { ProfileService } from "./services/profile.js";
+import { ApplicationService } from "./services/application.js";
 import { createOpportunityRouter } from "./http/opportunities.js";
 import { createProfileRouter } from "./http/profile.js";
+import { createApplicationRouter } from "./http/application.js";
 
 type Bindings = {
   DB?: D1DatabaseLike;
@@ -43,6 +46,11 @@ export function getProfileService(db: D1DatabaseLike): ProfileService {
   return new ProfileService(repo);
 }
 
+export function getApplicationService(db: D1DatabaseLike): ApplicationService {
+  const repo = new D1ApplicationRepository(db);
+  return new ApplicationService(repo);
+}
+
 // Memory fallback database for development / tests without active D1 binding
 class MemoryD1Database implements D1DatabaseLike {
   private rows = {
@@ -53,6 +61,9 @@ class MemoryD1Database implements D1DatabaseLike {
     profileFacts: new Map<string, any>(),
     profileEducation: new Map<string, any>(),
     profileSkills: new Map<string, any>(),
+    applications: new Map<string, any>(),
+    applicationEvents: new Map<string, any>(),
+    submittedAnswers: new Map<string, any>(),
   };
 
   prepare(sql: string) {
@@ -235,6 +246,52 @@ class MemoryD1Database implements D1DatabaseLike {
       return [];
     }
 
+    // Applications & Events
+    if (s.startsWith("INSERT INTO applications")) {
+      const [id, user_id, opportunity_id, state, started_at, submitted_at, submitted_job_snapshot_id, submitted_resume_artifact_id, created_at, updated_at] = bound;
+      this.rows.applications.set(id, { id, user_id, opportunity_id, state, started_at, submitted_at, submitted_job_snapshot_id, submitted_resume_artifact_id, created_at, updated_at });
+      return [];
+    }
+    if (s.includes("FROM applications WHERE id = ? AND user_id = ?")) {
+      const [id, userId] = bound;
+      const app = this.rows.applications.get(id);
+      return app && app.user_id === userId ? [{ ...app }] : [];
+    }
+    if (s.includes("FROM applications WHERE opportunity_id = ? AND user_id = ?")) {
+      const [oppId, userId] = bound;
+      for (const app of this.rows.applications.values()) {
+        if (app.opportunity_id === oppId && app.user_id === userId) return [{ ...app }];
+      }
+      return [];
+    }
+    if (s.startsWith("UPDATE applications SET")) {
+      const [state, submitted_at, submitted_job_snapshot_id, submitted_resume_artifact_id, updated_at, id, user_id] = bound;
+      const app = this.rows.applications.get(id);
+      if (app && app.user_id === user_id) {
+        Object.assign(app, { state, submitted_at, submitted_job_snapshot_id, submitted_resume_artifact_id, updated_at });
+      }
+      return [];
+    }
+    if (s.startsWith("UPDATE opportunities SET")) {
+      const [state, updated_at, id, user_id] = bound;
+      const opp = this.rows.opportunities.get(id);
+      if (opp && opp.user_id === user_id) {
+        opp.state = state;
+        opp.updated_at = updated_at;
+      }
+      return [];
+    }
+    if (s.startsWith("INSERT INTO application_events")) {
+      const [id, application_id, from_state, to_state, action, timestamp, metadata_json] = bound;
+      this.rows.applicationEvents.set(id, { id, application_id, from_state, to_state, action, timestamp, metadata_json });
+      return [];
+    }
+    if (s.startsWith("INSERT INTO submitted_answers")) {
+      const [id, application_id, question_key, question_text, answer_text, created_at] = bound;
+      this.rows.submittedAnswers.set(id, { id, application_id, question_key, question_text, answer_text, created_at });
+      return [];
+    }
+
     return [];
   }
 }
@@ -251,7 +308,13 @@ const profileRouter = createProfileRouter((c) => {
   return getProfileService(db);
 });
 
+const applicationRouter = createApplicationRouter((c) => {
+  const db = c.env?.DB || sharedDevDb;
+  return getApplicationService(db);
+});
+
 app.route("/api/opportunities", opportunityRouter);
 app.route("/api/profile", profileRouter);
+app.route("/api/applications", applicationRouter);
 
 export default app;

@@ -4,3 +4,5 @@ export {
   type D1PreparedStatementLike,
 } from "./repositories/opportunity.js";
 export { D1ProfileRepository } from "./repositories/profile.js";
+export { D1ApplicationRepository } from "./repositories/application.js";
+

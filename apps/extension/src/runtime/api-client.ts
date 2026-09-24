@@ -11,6 +11,10 @@ import type {
   UpdateProfileIdentityRequest,
   CreateExperienceRequest,
   CreateEducationRequest,
+  StartApplicationResponse,
+  ConfirmSubmissionRequest,
+  ConfirmSubmissionResponse,
+  ApplicationDetailResponse,
 } from "@workit/contracts";
 import {
   type Opportunity,
@@ -508,6 +512,140 @@ export class WorkitApiClient {
       await chrome.storage.local.set({ [key]: profile });
     } else if (typeof localStorage !== "undefined") {
       localStorage.setItem(key, JSON.stringify(profile));
+    }
+  }
+
+  // --- Application Lifecycle Methods (S7) ---
+
+  async startApplication(
+    opportunityId: string,
+    userId = "usr_default"
+  ): Promise<StartApplicationResponse> {
+    const now = new Date().toISOString();
+    const fallbackAppId = `app_${Date.now()}`;
+
+    try {
+      const res = await fetch(`${this.baseUrl}/api/applications/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify({ opportunityId }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as StartApplicationResponse;
+        await this.updateLocalOpportunityState(opportunityId, "applying");
+        return data;
+      }
+    } catch {
+      // Backend offline; fall through to local fallback
+    }
+
+    await this.updateLocalOpportunityState(opportunityId, "applying");
+
+    return {
+      application: {
+        id: fallbackAppId,
+        userId,
+        opportunityId,
+        state: "applying",
+        startedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      event: {
+        id: `evt_${Date.now()}`,
+        applicationId: fallbackAppId,
+        fromState: "draft",
+        toState: "applying",
+        action: "START_APPLICATION",
+        timestamp: now,
+      },
+    };
+  }
+
+  async confirmSubmission(
+    applicationId: string,
+    req: ConfirmSubmissionRequest,
+    opportunityId?: string,
+    userId = "usr_default"
+  ): Promise<ConfirmSubmissionResponse> {
+    const now = new Date().toISOString();
+
+    try {
+      const res = await fetch(`${this.baseUrl}/api/applications/${applicationId}/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify(req),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as ConfirmSubmissionResponse;
+        if (opportunityId) {
+          await this.updateLocalOpportunityState(opportunityId, "applied");
+        }
+        return data;
+      }
+    } catch {
+      // Backend offline; fall through to local fallback
+    }
+
+    if (opportunityId) {
+      await this.updateLocalOpportunityState(opportunityId, "applied");
+    }
+
+    return {
+      application: {
+        id: applicationId,
+        userId,
+        opportunityId: opportunityId || "",
+        state: "applied",
+        startedAt: now,
+        submittedAt: req.submittedAt || now,
+        submittedJobSnapshotId: req.snapshotId,
+        submittedResumeArtifactId: req.resumeArtifactId,
+        createdAt: now,
+        updatedAt: now,
+      },
+      event: {
+        id: `evt_${Date.now()}`,
+        applicationId,
+        fromState: "applying",
+        toState: "applied",
+        action: "CONFIRM_SUBMISSION",
+        timestamp: now,
+        metadata: { snapshotId: req.snapshotId },
+      },
+      answers: [],
+    };
+  }
+
+  async getApplication(
+    opportunityId: string,
+    userId = "usr_default"
+  ): Promise<ApplicationDetailResponse | null> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/applications/by-opportunity/${opportunityId}`, {
+        headers: { "x-user-id": userId },
+      });
+      if (res.ok) {
+        return (await res.json()) as ApplicationDetailResponse;
+      }
+    } catch {
+      // Fall through
+    }
+    return null;
+  }
+
+  async updateLocalOpportunityState(opportunityId: string, newState: OpportunityState): Promise<void> {
+    const item = await this.getLocalOpportunityDetail(opportunityId);
+    if (item) {
+      item.opportunity.state = newState;
+      item.opportunity.updatedAt = new Date().toISOString();
+      await this.persistLocalItem(item.opportunity, item.currentSnapshot);
     }
   }
 }

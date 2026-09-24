@@ -17,3 +17,10 @@ export type {
   CreateEducationRequest,
   UpdateSkillsRequest,
 } from "./profile.js";
+export type {
+  StartApplicationRequest,
+  StartApplicationResponse,
+  ConfirmSubmissionRequest,
+  ConfirmSubmissionResponse,
+  ApplicationDetailResponse,
+} from "./application.js";
