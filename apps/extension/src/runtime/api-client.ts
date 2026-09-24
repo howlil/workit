@@ -2,10 +2,20 @@ import type {
   JobCandidate,
   SaveOpportunityResponse,
   OpportunityCheckResponse,
+  OpportunityState,
 } from "@workit/contracts";
-import { normalizeUrl } from "@workit/domain";
+import {
+  type Opportunity,
+  type JobSnapshot,
+  normalizeUrl,
+} from "@workit/domain";
 
 const DEFAULT_API_BASE = "http://localhost:8787";
+
+export interface StoredOpportunityItem {
+  opportunity: Opportunity;
+  currentSnapshot: JobSnapshot;
+}
 
 export class WorkitApiClient {
   constructor(private baseUrl: string = DEFAULT_API_BASE) {}
@@ -18,6 +28,42 @@ export class WorkitApiClient {
     candidate: JobCandidate,
     userId = "usr_default"
   ): Promise<SaveOpportunityResponse> {
+    const now = new Date().toISOString();
+    const fallbackId = `opp_${Date.now()}`;
+    const fallbackSnapId = `snap_${Date.now()}`;
+
+    const localOpp: Opportunity = {
+      id: fallbackId,
+      userId,
+      sourceProvider: candidate.source.provider,
+      sourceJobId: candidate.source.sourceJobId,
+      canonicalUrl: candidate.source.canonicalUrl,
+      company: candidate.company || "Unknown Company",
+      title: candidate.title || "Untitled Job",
+      location: candidate.location,
+      workArrangement: candidate.workArrangement,
+      employmentType: candidate.employmentType,
+      state: "saved",
+      currentSnapshotId: fallbackSnapId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const localSnap: JobSnapshot = {
+      id: fallbackSnapId,
+      opportunityId: fallbackId,
+      company: localOpp.company,
+      title: localOpp.title,
+      location: localOpp.location,
+      employmentType: localOpp.employmentType,
+      workArrangement: localOpp.workArrangement,
+      descriptionText: candidate.descriptionText,
+      descriptionHtml: candidate.descriptionHtml,
+      sourceUrl: candidate.source.canonicalUrl,
+      capturedAt: now,
+      contentHash: "hash",
+    };
+
     try {
       const res = await fetch(`${this.baseUrl}/api/opportunities`, {
         method: "POST",
@@ -30,21 +76,27 @@ export class WorkitApiClient {
 
       if (res.ok) {
         const data = (await res.json()) as SaveOpportunityResponse;
-        await this.recordSavedLocally(candidate.source.canonicalUrl, data.opportunityId);
+        localOpp.id = data.opportunityId;
+        localOpp.state = data.state;
+        localOpp.currentSnapshotId = data.snapshotId;
+        localSnap.id = data.snapshotId;
+        localSnap.opportunityId = data.opportunityId;
+
+        await this.persistLocalItem(localOpp, localSnap);
+        await this.recordSavedUrl(candidate.source.canonicalUrl, data.opportunityId);
         return data;
       }
     } catch {
-      // Backend offline; fallback to local storage
+      // Backend offline; fall through to local persistence
     }
 
-    // Fallback persistence for offline or standalone extension testing
-    const fallbackId = `opp_${Date.now()}`;
-    await this.recordSavedLocally(candidate.source.canonicalUrl, fallbackId);
+    await this.persistLocalItem(localOpp, localSnap);
+    await this.recordSavedUrl(candidate.source.canonicalUrl, fallbackId);
 
     return {
       opportunityId: fallbackId,
       state: "saved",
-      snapshotId: `snap_${Date.now()}`,
+      snapshotId: fallbackSnapId,
       isDuplicate: false,
     };
   }
@@ -69,10 +121,55 @@ export class WorkitApiClient {
       // Fall through to local cache
     }
 
-    return this.checkSavedLocally(url);
+    return this.checkSavedUrl(url);
   }
 
-  private async recordSavedLocally(url: string, id: string): Promise<void> {
+  async listOpportunities(
+    options: { state?: OpportunityState; limit?: number } = {},
+    userId = "usr_default"
+  ): Promise<Opportunity[]> {
+    try {
+      let endpoint = `${this.baseUrl}/api/opportunities`;
+      const params = new URLSearchParams();
+      if (options.state) params.append("state", options.state);
+      if (options.limit) params.append("limit", String(options.limit));
+      if (params.toString()) endpoint += `?${params.toString()}`;
+
+      const res = await fetch(endpoint, {
+        headers: { "x-user-id": userId },
+      });
+
+      if (res.ok) {
+        const data = (await res.json()) as { items: Opportunity[] };
+        return data.items || [];
+      }
+    } catch {
+      // Fall through to local list
+    }
+
+    return this.listLocalOpportunities(options.state);
+  }
+
+  async getOpportunityDetail(
+    id: string,
+    userId = "usr_default"
+  ): Promise<StoredOpportunityItem | null> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/opportunities/${id}`, {
+        headers: { "x-user-id": userId },
+      });
+
+      if (res.ok) {
+        return (await res.json()) as StoredOpportunityItem;
+      }
+    } catch {
+      // Fall through to local detail
+    }
+
+    return this.getLocalOpportunityDetail(id);
+  }
+
+  private async recordSavedUrl(url: string, id: string): Promise<void> {
     const key = `workit_saved_${normalizeUrl(url)}`;
     if (typeof chrome !== "undefined" && chrome.storage?.local) {
       await chrome.storage.local.set({ [key]: id });
@@ -81,7 +178,7 @@ export class WorkitApiClient {
     }
   }
 
-  private async checkSavedLocally(url: string): Promise<OpportunityCheckResponse> {
+  private async checkSavedUrl(url: string): Promise<OpportunityCheckResponse> {
     const key = `workit_saved_${normalizeUrl(url)}`;
     if (typeof chrome !== "undefined" && chrome.storage?.local) {
       const items = await chrome.storage.local.get(key);
@@ -95,6 +192,64 @@ export class WorkitApiClient {
       }
     }
     return { exists: false };
+  }
+
+  private async persistLocalItem(opportunity: Opportunity, snapshot: JobSnapshot): Promise<void> {
+    const key = `workit_item_${opportunity.id}`;
+    const record: StoredOpportunityItem = { opportunity, currentSnapshot: snapshot };
+
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      await chrome.storage.local.set({ [key]: record });
+      const indexItems = await chrome.storage.local.get("workit_index");
+      const ids: string[] = indexItems["workit_index"] || [];
+      if (!ids.includes(opportunity.id)) {
+        ids.unshift(opportunity.id);
+        await chrome.storage.local.set({ workit_index: ids });
+      }
+    } else if (typeof localStorage !== "undefined") {
+      localStorage.setItem(key, JSON.stringify(record));
+      const raw = localStorage.getItem("workit_index");
+      const ids: string[] = raw ? JSON.parse(raw) : [];
+      if (!ids.includes(opportunity.id)) {
+        ids.unshift(opportunity.id);
+        localStorage.setItem("workit_index", JSON.stringify(ids));
+      }
+    }
+  }
+
+  private async listLocalOpportunities(stateFilter?: OpportunityState): Promise<Opportunity[]> {
+    const ids: string[] = [];
+
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      const indexItems = await chrome.storage.local.get("workit_index");
+      ids.push(...(indexItems["workit_index"] || []));
+    } else if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem("workit_index");
+      if (raw) ids.push(...JSON.parse(raw));
+    }
+
+    const items: Opportunity[] = [];
+    for (const id of ids) {
+      const detail = await this.getLocalOpportunityDetail(id);
+      if (detail) {
+        if (!stateFilter || detail.opportunity.state === stateFilter) {
+          items.push(detail.opportunity);
+        }
+      }
+    }
+    return items;
+  }
+
+  private async getLocalOpportunityDetail(id: string): Promise<StoredOpportunityItem | null> {
+    const key = `workit_item_${id}`;
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      const data = await chrome.storage.local.get(key);
+      return data[key] || null;
+    } else if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    }
+    return null;
   }
 }
 

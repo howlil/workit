@@ -308,3 +308,86 @@ test.describe("S3 — Capture + Persist Opportunity E2E", () => {
     await context.close();
   });
 });
+
+test.describe("S4 — Jobs Workspace E2E", () => {
+  test("end-to-end: capture job in popup -> browse workspace -> view details -> filter by state", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    // 1. Capture a job first
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${serverPort}/jobs/json-ld-complete.html`);
+
+    const workitHost = page.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    const saveBtn = workitHost.locator('[data-testid="workit-save-job-btn"]');
+    await expect(saveBtn).toBeVisible();
+    await saveBtn.click();
+
+    const savedView = workitHost.locator('[data-testid="workit-saved-view"]');
+    await expect(savedView).toBeVisible({ timeout: 5000 });
+
+    // 2. Open Workspace page via extension URL
+    let [background] = context.serviceWorkers();
+    if (!background) {
+      background = await context.waitForEvent("serviceworker");
+    }
+    const extensionId = background.url().split("/")[2];
+
+    const wsPage = await context.newPage();
+    await wsPage.goto(`chrome-extension://${extensionId}/workspace.html`);
+
+    // 3. Verify Workspace shell (Sidebar + Title + Filter chips)
+    await expect(wsPage.locator('[data-testid="workspace-sidebar"]')).toBeVisible();
+    await expect(wsPage.locator('[data-testid="nav-jobs"]')).toHaveClass(/is-active/);
+    await expect(wsPage.locator("h1")).toHaveText("Opportunities");
+
+    // 4. Verify Table renders the saved opportunity
+    const table = wsPage.locator('[data-testid="jobs-table"]');
+    await expect(table).toBeVisible({ timeout: 5000 });
+
+    const rowTitle = wsPage.locator('[data-testid="opp-row-title"]');
+    await expect(rowTitle).toHaveText("Software Engineer");
+
+    const rowStatus = wsPage.locator('[data-testid="opp-row-status"]');
+    await expect(rowStatus).toHaveText("saved");
+
+    // 5. Click the row -> SelectedJobPreview opens
+    await rowTitle.click();
+
+    const preview = wsPage.locator('[data-testid="selected-job-preview"]');
+    await expect(preview).toBeVisible({ timeout: 5000 });
+
+    await expect(wsPage.locator('[data-testid="preview-title"]')).toHaveText("Software Engineer");
+    await expect(wsPage.locator('[data-testid="preview-company"]')).toHaveText("Example Corp");
+    await expect(wsPage.locator('[data-testid="preview-description"]')).toContainText(
+      "TypeScript or JavaScript"
+    );
+
+    const openOriginal = wsPage.locator('[data-testid="preview-open-original"]');
+    await expect(openOriginal).toBeVisible();
+
+    // 6. Test state filtering
+    // Click "Closed" filter -> row should disappear, empty state should show
+    await wsPage.click('[data-testid="filter-closed"]');
+    await expect(wsPage.locator('[data-testid="jobs-empty-state"]')).toBeVisible({ timeout: 5000 });
+
+    // Click "All" filter -> row should reappear
+    await wsPage.click('[data-testid="filter-all"]');
+    await expect(wsPage.locator('[data-testid="jobs-table"]')).toBeVisible({ timeout: 5000 });
+    await expect(wsPage.locator('[data-testid="opp-row-title"]')).toHaveText("Software Engineer");
+
+    await context.close();
+  });
+});

@@ -36,27 +36,57 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
           <span className="workit-brand-logo">W</span>
           <span className="workit-brand-name">Workit</span>
         </div>
-        <button
-          type="button"
-          className="workit-close-btn"
-          onClick={onClose}
-          aria-label="Close"
-          data-testid="workit-close-btn"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            type="button"
+            className="workit-close-btn"
+            onClick={() => {
+              if (typeof chrome !== "undefined" && chrome.runtime?.getURL) {
+                window.open(chrome.runtime.getURL("workspace.html"), "_blank");
+              } else {
+                window.open("/workspace.html", "_blank");
+              }
+            }}
+            title="Open workspace"
+            aria-label="Open workspace"
+            data-testid="workit-open-workspace"
           >
-            <line x1="3" y1="3" x2="11" y2="11" />
-            <line x1="11" y1="3" x2="3" y2="11" />
-          </svg>
-        </button>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="workit-close-btn"
+            onClick={onClose}
+            aria-label="Close"
+            data-testid="workit-close-btn"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="3" y1="3" x2="11" y2="11" />
+              <line x1="11" y1="3" x2="3" y2="11" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       <div className="workit-popup-body">
