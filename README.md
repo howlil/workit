@@ -6,7 +6,7 @@ The product captures jobs while browsing, keeps the exact context of each applic
 
 ## Product docs
 
-- [Product Design](./PRODUCT_DESIGN.md)
+- [Product Design](./.agents/PRODUCT_DESIGN.md)
 - [Design System](./DESIGN.md)
 - [Engineering Design](./.agents/ENGINEERING_DESIGN.md)
 

@@ -24,7 +24,7 @@ Do not optimize for ceremony, maximum test count, maximum abstraction, or maximu
 
 Before changing behavior, use these as the repository contracts:
 
-- `PRODUCT_DESIGN.md` — product behavior, user flows, states, and scope.
+- `.agents/PRODUCT_DESIGN.md` — product behavior, user flows, states, and scope.
 - `DESIGN.md` — UI and visual rules.
 - `.agents/ENGINEERING_DESIGN.md` — architecture, boundaries, data model, browser runtime, autofill, persistence, and MCP design.
 
