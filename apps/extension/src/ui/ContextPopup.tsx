@@ -75,24 +75,50 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
 
         {browserContext.type === "job" && (
           <div>
-            <div className="workit-context-tag is-job">
-              <span className="workit-tag-dot" />
-              <span>Job detected</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div className="workit-context-tag is-job" style={{ marginBottom: 0 }}>
+                <span className="workit-tag-dot" />
+                <span>Job detected</span>
+              </div>
+              <span className="workit-chip is-green" data-testid="workit-strategy-badge">
+                {browserContext.candidate.extraction.strategy === "json-ld" ? "JSON-LD" : "Generic"}
+              </span>
             </div>
+
             <div className="workit-job-preview">
-              <h2 className="workit-job-title">
+              <h2 className="workit-job-title" data-testid="workit-job-title">
                 {browserContext.candidate.title || "Untitled Job"}
               </h2>
-              <div className="workit-job-company">
+              <div className="workit-job-company" data-testid="workit-job-company">
                 {browserContext.candidate.company || "Unknown Company"}
               </div>
               {browserContext.candidate.location && (
-                <div className="workit-job-meta">
+                <div className="workit-job-meta" data-testid="workit-job-location">
                   {browserContext.candidate.location}
-                  {browserContext.candidate.workArrangement &&
-                    ` · ${browserContext.candidate.workArrangement}`}
                 </div>
               )}
+
+              <div className="workit-chips-row">
+                {browserContext.candidate.workArrangement &&
+                  browserContext.candidate.workArrangement !== "unknown" && (
+                    <span className="workit-chip" data-testid="workit-chip-arrangement">
+                      {browserContext.candidate.workArrangement}
+                    </span>
+                  )}
+                {browserContext.candidate.employmentType && (
+                  <span className="workit-chip" data-testid="workit-chip-type">
+                    {browserContext.candidate.employmentType}
+                  </span>
+                )}
+              </div>
+
+              {browserContext.candidate.descriptionText && (
+                <div className="workit-job-snippet" data-testid="workit-job-snippet">
+                  {browserContext.candidate.descriptionText.slice(0, 180)}
+                  {browserContext.candidate.descriptionText.length > 180 ? "…" : ""}
+                </div>
+              )}
+
               <button
                 type="button"
                 className="workit-primary-btn"

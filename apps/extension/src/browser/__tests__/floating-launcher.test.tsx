@@ -133,6 +133,7 @@ describe("S1 — Floating Launcher & ShadowRoot Isolation", () => {
         company: "Acme Cloud",
         location: "Remote",
         descriptionText: "Build scalable distributed systems.",
+        extractedAt: new Date().toISOString(),
         extraction: { strategy: "json-ld", confidence: 0.95 },
       },
     });

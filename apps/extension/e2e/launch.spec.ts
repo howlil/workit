@@ -113,7 +113,7 @@ test.describe("S1 — Floating Launcher E2E", () => {
     // Verify host page button is affected by hostile CSS (red background)
     const pageButton = page.locator("body > button");
     const pageBtnColor = await pageButton.evaluate((el) => window.getComputedStyle(el).backgroundColor);
-    expect(pageBtnColor).toBe("rgb(255, 0, 0)"); // red
+    expect(pageBtnColor).toBe("rgb(255, 0, 0)");
 
     // Verify Workit launcher is unaffected by hostile CSS
     const workitHost = page.locator("#workit-root");
@@ -127,18 +127,127 @@ test.describe("S1 — Floating Launcher E2E", () => {
     expect(Math.round(box!.width)).toBe(44);
     expect(Math.round(box!.height)).toBe(44);
 
-    // Verify launcher background is white, NOT red
     const launcherBg = await launcher.evaluate((el) => window.getComputedStyle(el).backgroundColor);
-    expect(launcherBg).toBe("rgb(255, 255, 255)"); // #FFFFFF
+    expect(launcherBg).toBe("rgb(255, 255, 255)");
 
-    // Verify launcher can be opened even on hostile page
     await launcher.click();
     const popup = workitHost.locator('[data-testid="workit-popup"]');
     await expect(popup).toBeVisible();
 
-    // Verify popup background is white, NOT magenta/unstyled
     const popupBg = await popup.evaluate((el) => window.getComputedStyle(el).backgroundColor);
     expect(popupBg).toBe("rgb(255, 255, 255)");
+
+    await context.close();
+  });
+});
+
+test.describe("S2 — Job Detection E2E", () => {
+  test("detects JSON-LD job, shows launcher indicator dot, and renders candidate in popup", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${serverPort}/jobs/json-ld-complete.html`);
+
+    const workitHost = page.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    // Verify indicator dot appears on launcher
+    const dot = workitHost.locator('[data-testid="workit-indicator-dot"]');
+    await expect(dot).toBeVisible({ timeout: 5000 });
+
+    // Open popup
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    const popup = workitHost.locator('[data-testid="workit-popup"]');
+    await expect(popup).toBeVisible();
+
+    // Verify extracted job content
+    await expect(workitHost.locator('[data-testid="workit-strategy-badge"]')).toHaveText("JSON-LD");
+    await expect(workitHost.locator('[data-testid="workit-job-title"]')).toHaveText("Software Engineer");
+    await expect(workitHost.locator('[data-testid="workit-job-company"]')).toHaveText("Example Corp");
+    await expect(workitHost.locator('[data-testid="workit-job-location"]')).toContainText("Jakarta");
+    await expect(workitHost.locator('[data-testid="workit-chip-arrangement"]')).toHaveText("remote");
+    await expect(workitHost.locator('[data-testid="workit-chip-type"]')).toHaveText("FULL_TIME");
+    await expect(workitHost.locator('[data-testid="workit-save-job-btn"]')).toBeVisible();
+
+    await context.close();
+  });
+
+  test("detects generic job page fallback from DOM signals", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${serverPort}/jobs/generic-job.html`);
+
+    const workitHost = page.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    // Verify indicator dot appears on launcher
+    const dot = workitHost.locator('[data-testid="workit-indicator-dot"]');
+    await expect(dot).toBeVisible({ timeout: 5000 });
+
+    // Open popup
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    // Verify generic extraction values
+    await expect(workitHost.locator('[data-testid="workit-strategy-badge"]')).toHaveText("Generic");
+    await expect(workitHost.locator('[data-testid="workit-job-title"]')).toHaveText("Data Analyst");
+    await expect(workitHost.locator('[data-testid="workit-job-company"]')).toHaveText("Acme Corp");
+    await expect(workitHost.locator('[data-testid="workit-job-location"]')).toHaveText("Bandung, Indonesia");
+    await expect(workitHost.locator('[data-testid="workit-save-job-btn"]')).toBeVisible();
+
+    await context.close();
+  });
+
+  test("does not detect non-job page", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${serverPort}/jobs/non-job.html`);
+
+    const workitHost = page.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    // Wait briefly for detection to complete
+    await page.waitForTimeout(500);
+
+    // Verify NO indicator dot
+    const dot = workitHost.locator('[data-testid="workit-indicator-dot"]');
+    await expect(dot).toBeHidden();
+
+    // Open popup -> verify "No job detected"
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    const popup = workitHost.locator('[data-testid="workit-popup"]');
+    await expect(popup).toBeVisible();
+    await expect(popup).toContainText("No job detected");
 
     await context.close();
   });

@@ -1,29 +1,12 @@
+import type { JobCandidate } from "@workit/contracts";
+
 export type OverlayState =
   | { type: "closed" }
   | { type: "open" };
 
-export interface JobCandidateStub {
-  source: {
-    canonicalUrl: string;
-    provider?: string;
-    sourceJobId?: string;
-  };
-  company?: string;
-  title?: string;
-  location?: string;
-  workArrangement?: "remote" | "hybrid" | "onsite" | "unknown";
-  employmentType?: string;
-  descriptionText: string;
-  descriptionHtml?: string;
-  extraction: {
-    strategy: "json-ld" | "adapter" | "generic";
-    confidence: number;
-  };
-}
-
 export type BrowserContext =
   | { type: "ordinary" }
-  | { type: "job"; candidate: JobCandidateStub }
+  | { type: "job"; candidate: JobCandidate }
   | { type: "saved-job"; opportunityId: string };
 
 type Listener = () => void;

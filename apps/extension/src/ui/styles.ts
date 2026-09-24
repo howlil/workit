@@ -279,6 +279,49 @@ export const WORKIT_SHADOW_STYLES = `
   margin-top: 4px;
 }
 
+.workit-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.workit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: var(--radius-chip);
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--hover);
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+}
+
+.workit-chip.is-green {
+  background: var(--green-soft);
+  color: var(--green);
+  border-color: var(--green-line);
+}
+
+.workit-job-snippet {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: var(--hover);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-height: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+}
+
 .workit-primary-btn {
   margin-top: 16px;
   width: 100%;
