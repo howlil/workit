@@ -1,7 +1,13 @@
 import { Hono } from "hono";
-import { D1OpportunityRepository, type D1DatabaseLike } from "@workit/db";
+import {
+  D1OpportunityRepository,
+  D1ProfileRepository,
+  type D1DatabaseLike,
+} from "@workit/db";
 import { OpportunityService } from "./services/opportunity.js";
+import { ProfileService } from "./services/profile.js";
 import { createOpportunityRouter } from "./http/opportunities.js";
+import { createProfileRouter } from "./http/profile.js";
 
 type Bindings = {
   DB?: D1DatabaseLike;
@@ -14,7 +20,6 @@ type Variables = {
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
 // Authentication middleware — extracts authenticated identity
-// In production: derived from token / Cloudflare Access. In dev: defaults to trusted test user.
 app.use("*", async (c, next) => {
   const userIdHeader = c.req.header("x-user-id");
   const userId = userIdHeader || "usr_default";
@@ -27,10 +32,15 @@ app.get("/api/health", (c) => {
   return c.json({ status: "ok", service: "workit-api" });
 });
 
-// Helper to instantiate OpportunityService per request
+// Helpers to instantiate services per request
 export function getOpportunityService(db: D1DatabaseLike): OpportunityService {
   const repo = new D1OpportunityRepository(db);
   return new OpportunityService(repo);
+}
+
+export function getProfileService(db: D1DatabaseLike): ProfileService {
+  const repo = new D1ProfileRepository(db);
+  return new ProfileService(repo);
 }
 
 // Memory fallback database for development / tests without active D1 binding
@@ -38,6 +48,11 @@ class MemoryD1Database implements D1DatabaseLike {
   private rows = {
     opportunities: new Map<string, any>(),
     jobSnapshots: new Map<string, any>(),
+    careerProfiles: new Map<string, any>(),
+    profileExperiences: new Map<string, any>(),
+    profileFacts: new Map<string, any>(),
+    profileEducation: new Map<string, any>(),
+    profileSkills: new Map<string, any>(),
   };
 
   prepare(sql: string) {
@@ -73,6 +88,8 @@ class MemoryD1Database implements D1DatabaseLike {
 
   private execute(sql: string, bound: any[]): any[] {
     const s = sql.trim();
+
+    // Opportunities & Snapshots
     if (s.startsWith("INSERT INTO opportunities")) {
       const [id, user_id, source_provider, source_job_id, canonical_url, company, title, location, work_arrangement, employment_type, state, current_snapshot_id, created_at, updated_at] = bound;
       this.rows.opportunities.set(id, { id, user_id, source_provider, source_job_id, canonical_url, company, title, location, work_arrangement, employment_type, state, current_snapshot_id, created_at, updated_at });
@@ -118,6 +135,106 @@ class MemoryD1Database implements D1DatabaseLike {
       }
       return list;
     }
+
+    // Career Profiles
+    if (s.startsWith("INSERT INTO career_profiles")) {
+      const [id, user_id, full_name, email, phone, location, linkedin_url, portfolio_url, github_url, summary, created_at, updated_at] = bound;
+      this.rows.careerProfiles.set(id, { id, user_id, full_name, email, phone, location, linkedin_url, portfolio_url, github_url, summary, created_at, updated_at });
+      return [];
+    }
+    if (s.includes("FROM career_profiles WHERE user_id = ?")) {
+      const [userId] = bound;
+      for (const p of this.rows.careerProfiles.values()) {
+        if (p.user_id === userId) return [{ ...p }];
+      }
+      return [];
+    }
+    if (s.startsWith("UPDATE career_profiles SET")) {
+      const [full_name, email, phone, location, linkedin_url, portfolio_url, github_url, summary, updated_at, id, user_id] = bound;
+      const existing = this.rows.careerProfiles.get(id);
+      if (existing && existing.user_id === user_id) {
+        Object.assign(existing, { full_name, email, phone, location, linkedin_url, portfolio_url, github_url, summary, updated_at });
+      }
+      return [];
+    }
+
+    // Experiences
+    if (s.startsWith("INSERT INTO profile_experiences")) {
+      const [id, profile_id, company, title, location, start_date, end_date, is_current, description, created_at, updated_at] = bound;
+      this.rows.profileExperiences.set(id, { id, profile_id, company, title, location, start_date, end_date, is_current, description, created_at, updated_at });
+      return [];
+    }
+    if (s.includes("FROM profile_experiences WHERE profile_id = ?")) {
+      const [profileId] = bound;
+      const list: any[] = [];
+      for (const exp of this.rows.profileExperiences.values()) {
+        if (exp.profile_id === profileId) list.push({ ...exp });
+      }
+      return list;
+    }
+    if (s.startsWith("DELETE FROM profile_experiences WHERE id = ?")) {
+      const [id] = bound;
+      this.rows.profileExperiences.delete(id);
+      return [];
+    }
+
+    // Experience Facts
+    if (s.startsWith("INSERT INTO profile_experience_facts")) {
+      const [id, experience_id, fact_text, fact_type, created_at] = bound;
+      this.rows.profileFacts.set(id, { id, experience_id, fact_text, fact_type, created_at });
+      return [];
+    }
+    if (s.includes("FROM profile_experience_facts WHERE experience_id = ?")) {
+      const [expId] = bound;
+      const list: any[] = [];
+      for (const fact of this.rows.profileFacts.values()) {
+        if (fact.experience_id === expId) list.push({ ...fact });
+      }
+      return list;
+    }
+
+    // Education
+    if (s.startsWith("INSERT INTO profile_education")) {
+      const [id, profile_id, institution, degree, field_of_study, start_date, end_date, created_at] = bound;
+      this.rows.profileEducation.set(id, { id, profile_id, institution, degree, field_of_study, start_date, end_date, created_at });
+      return [];
+    }
+    if (s.includes("FROM profile_education WHERE profile_id = ?")) {
+      const [profileId] = bound;
+      const list: any[] = [];
+      for (const edu of this.rows.profileEducation.values()) {
+        if (edu.profile_id === profileId) list.push({ ...edu });
+      }
+      return list;
+    }
+    if (s.startsWith("DELETE FROM profile_education WHERE id = ?")) {
+      const [id] = bound;
+      this.rows.profileEducation.delete(id);
+      return [];
+    }
+
+    // Skills
+    if (s.startsWith("INSERT INTO profile_skills")) {
+      const [id, profile_id, name, category, created_at] = bound;
+      this.rows.profileSkills.set(id, { id, profile_id, name, category, created_at });
+      return [];
+    }
+    if (s.includes("FROM profile_skills WHERE profile_id = ?")) {
+      const [profileId] = bound;
+      const list: any[] = [];
+      for (const skill of this.rows.profileSkills.values()) {
+        if (skill.profile_id === profileId) list.push({ ...skill });
+      }
+      return list;
+    }
+    if (s.startsWith("DELETE FROM profile_skills WHERE profile_id = ?")) {
+      const [profileId] = bound;
+      for (const [key, skill] of this.rows.profileSkills.entries()) {
+        if (skill.profile_id === profileId) this.rows.profileSkills.delete(key);
+      }
+      return [];
+    }
+
     return [];
   }
 }
@@ -129,6 +246,12 @@ const opportunityRouter = createOpportunityRouter((c) => {
   return getOpportunityService(db);
 });
 
+const profileRouter = createProfileRouter((c) => {
+  const db = c.env?.DB || sharedDevDb;
+  return getProfileService(db);
+});
+
 app.route("/api/opportunities", opportunityRouter);
+app.route("/api/profile", profileRouter);
 
 export default app;

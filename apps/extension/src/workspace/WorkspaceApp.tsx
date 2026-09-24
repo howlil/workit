@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import type { Opportunity } from "@workit/domain";
 import type { OpportunityState } from "@workit/contracts";
 import { workitApiClient, type StoredOpportunityItem } from "../runtime/api-client";
-import { Sidebar } from "./Sidebar";
+import { Sidebar, type WorkspaceView } from "./Sidebar";
 import { JobsTable } from "./JobsTable";
 import { SelectedJobPreview } from "./SelectedJobPreview";
+import { ProfileView } from "./ProfileView";
 
 type FilterTab = "all" | OpportunityState;
 
@@ -19,6 +20,7 @@ const FILTER_TABS: Array<{ id: FilterTab; label: string }> = [
 ];
 
 export function WorkspaceApp() {
+  const [currentView, setCurrentView] = useState<WorkspaceView>("jobs");
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [selectedItem, setSelectedItem] = useState<StoredOpportunityItem | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
@@ -43,8 +45,10 @@ export function WorkspaceApp() {
   };
 
   useEffect(() => {
-    fetchOpportunities(activeFilter);
-  }, [activeFilter]);
+    if (currentView === "jobs") {
+      fetchOpportunities(activeFilter);
+    }
+  }, [activeFilter, currentView]);
 
   const handleSelect = async (id: string) => {
     try {
@@ -59,49 +63,67 @@ export function WorkspaceApp() {
 
   return (
     <div className="workspace-layout">
-      <Sidebar activeCount={opportunities.length} />
+      <Sidebar
+        activeCount={opportunities.length}
+        currentView={currentView}
+        onSelectView={setCurrentView}
+      />
 
       <main className="workspace-main">
-        <header className="workspace-header">
-          <div className="workspace-title-row">
-            <h1 className="workspace-title">Opportunities</h1>
-          </div>
+        {currentView === "jobs" ? (
+          <>
+            <header className="workspace-header">
+              <div className="workspace-title-row">
+                <h1 className="workspace-title">Opportunities</h1>
+              </div>
 
-          <div className="filter-chips">
-            {FILTER_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`filter-chip ${activeFilter === tab.id ? "is-active" : ""}`}
-                onClick={() => setActiveFilter(tab.id)}
-                data-testid={`filter-${tab.id}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </header>
+              <div className="filter-chips">
+                {FILTER_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`filter-chip ${activeFilter === tab.id ? "is-active" : ""}`}
+                    onClick={() => setActiveFilter(tab.id)}
+                    data-testid={`filter-${tab.id}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </header>
 
-        <div className="workspace-split-content">
-          {isLoading ? (
-            <div className="empty-state-view" data-testid="workspace-loading">
-              Loading opportunities...
+            <div className="workspace-split-content">
+              {isLoading ? (
+                <div className="empty-state-view" data-testid="workspace-loading">
+                  Loading opportunities...
+                </div>
+              ) : (
+                <JobsTable
+                  opportunities={opportunities}
+                  selectedId={selectedItem?.opportunity.id || null}
+                  onSelect={handleSelect}
+                />
+              )}
+
+              {selectedItem && (
+                <SelectedJobPreview
+                  item={selectedItem}
+                  onClose={() => setSelectedItem(null)}
+                />
+              )}
             </div>
-          ) : (
-            <JobsTable
-              opportunities={opportunities}
-              selectedId={selectedItem?.opportunity.id || null}
-              onSelect={handleSelect}
-            />
-          )}
+          </>
+        ) : (
+          <>
+            <header className="workspace-header">
+              <div className="workspace-title-row">
+                <h1 className="workspace-title">Career Profile</h1>
+              </div>
+            </header>
 
-          {selectedItem && (
-            <SelectedJobPreview
-              item={selectedItem}
-              onClose={() => setSelectedItem(null)}
-            />
-          )}
-        </div>
+            <ProfileView />
+          </>
+        )}
       </main>
     </div>
   );

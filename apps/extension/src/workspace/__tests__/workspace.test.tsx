@@ -3,6 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { Sidebar } from "../Sidebar";
 import { JobsTable } from "../JobsTable";
 import { SelectedJobPreview } from "../SelectedJobPreview";
+import { ProfileView } from "../ProfileView";
 import type { Opportunity, JobSnapshot } from "@workit/domain";
 import type { StoredOpportunityItem } from "../../runtime/api-client";
 
@@ -59,7 +60,8 @@ describe("S4 — Jobs Workspace Components", () => {
 
   describe("Sidebar", () => {
     it("renders Jobs navigation as active with count badge", async () => {
-      root.render(<Sidebar activeCount={3} />);
+      const handleSelectView = vi.fn();
+      root.render(<Sidebar activeCount={3} currentView="jobs" onSelectView={handleSelectView} />);
 
       await vi.waitFor(() => {
         const jobsNav = container.querySelector('[data-testid="nav-jobs"]');
@@ -72,8 +74,22 @@ describe("S4 — Jobs Workspace Components", () => {
       const searchNav = container.querySelector('[data-testid="nav-search"]');
       expect(searchNav?.className).toContain("is-disabled");
 
-      const profileNav = container.querySelector('[data-testid="nav-profile"]');
-      expect(profileNav?.className).toContain("is-disabled");
+      const profileNav = container.querySelector<HTMLElement>('[data-testid="nav-profile"]');
+      expect(profileNav).not.toBeNull();
+      expect(profileNav?.className).not.toContain("is-disabled");
+
+      // Click profile nav
+      profileNav?.click();
+      expect(handleSelectView).toHaveBeenCalledWith("profile");
+    });
+
+    it("renders Profile as active when currentView is profile", async () => {
+      root.render(<Sidebar activeCount={0} currentView="profile" onSelectView={() => {}} />);
+
+      await vi.waitFor(() => {
+        const profileNav = container.querySelector('[data-testid="nav-profile"]');
+        expect(profileNav?.className).toContain("is-active");
+      });
     });
   });
 
@@ -152,4 +168,27 @@ describe("S4 — Jobs Workspace Components", () => {
       expect(handleClose).toHaveBeenCalled();
     });
   });
+
+  describe("ProfileView", () => {
+    it("renders identity form, experiences, education, and skills", async () => {
+      root.render(<ProfileView />);
+
+      await vi.waitFor(() => {
+        expect(container.querySelector('[data-testid="profile-view"]')).not.toBeNull();
+      });
+
+      expect(container.querySelector('[data-testid="profile-identity-section"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="profile-experience-section"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="profile-education-section"]')).not.toBeNull();
+      expect(container.querySelector('[data-testid="profile-skills-section"]')).not.toBeNull();
+
+      const fullNameInput = container.querySelector<HTMLInputElement>('[data-testid="input-fullname"]');
+      expect(fullNameInput).not.toBeNull();
+      expect(fullNameInput?.value).toBe("Alex Developer");
+
+      const saveIdentityBtn = container.querySelector<HTMLButtonElement>('[data-testid="btn-save-identity"]');
+      expect(saveIdentityBtn).not.toBeNull();
+    });
+  });
 });
+

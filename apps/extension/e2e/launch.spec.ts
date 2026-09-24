@@ -391,3 +391,103 @@ test.describe("S4 — Jobs Workspace E2E", () => {
     await context.close();
   });
 });
+
+test.describe("S5 — Career Profile E2E", () => {
+  test("edit career profile identity, experiences, and skills -> reload workspace -> canonical values persist", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    let [background] = context.serviceWorkers();
+    if (!background) {
+      background = await context.waitForEvent("serviceworker");
+    }
+    const extensionId = background.url().split("/")[2];
+
+    const wsPage = await context.newPage();
+    await wsPage.goto(`chrome-extension://${extensionId}/workspace.html`);
+
+    // 1. Navigate to Profile tab
+    const profileNav = wsPage.locator('[data-testid="nav-profile"]');
+    await expect(profileNav).toBeVisible({ timeout: 5000 });
+    await profileNav.click();
+
+    // 2. Verify ProfileView is mounted
+    const profileView = wsPage.locator('[data-testid="profile-view"]');
+    await expect(profileView).toBeVisible({ timeout: 5000 });
+
+    // 3. Edit Personal Identity fields
+    const fullNameInput = wsPage.locator('[data-testid="input-fullname"]');
+    await fullNameInput.fill("Jane Doe");
+
+    const emailInput = wsPage.locator('[data-testid="input-email"]');
+    await emailInput.fill("jane.doe@workit.dev");
+
+    const locationInput = wsPage.locator('[data-testid="input-location"]');
+    await locationInput.fill("Jakarta, Indonesia");
+
+    const linkedinInput = wsPage.locator('[data-testid="input-linkedin"]');
+    await linkedinInput.fill("https://linkedin.com/in/janedoe");
+
+    // 4. Click explicit "Save Identity" button
+    const saveIdentityBtn = wsPage.locator('[data-testid="btn-save-identity"]');
+    await saveIdentityBtn.click();
+
+    const saveStatus = wsPage.locator('[data-testid="identity-save-status"]');
+    await expect(saveStatus).toBeVisible();
+    await expect(saveStatus).toContainText("Identity saved ✓");
+
+    // 5. Add a Work Experience with Facts
+    await wsPage.locator('[data-testid="input-exp-company"]').fill("GoTo Financial");
+    await wsPage.locator('[data-testid="input-exp-title"]').fill("Lead Software Engineer");
+    await wsPage.locator('[data-testid="input-exp-location"]').fill("Jakarta");
+    await wsPage.locator('[data-testid="input-exp-start"]').fill("2021-03");
+    await wsPage.locator('[data-testid="input-exp-current"]').check();
+    await wsPage.locator('[data-testid="input-exp-facts"]').fill("Built RBAC for three roles\nScaled API to 10k requests/second");
+
+    await wsPage.locator('[data-testid="btn-add-experience"]').click();
+
+    // Verify added experience and its facts appear in the list
+    await expect(wsPage.locator('[data-testid="experience-list"]')).toContainText("Lead Software Engineer");
+    await expect(wsPage.locator('[data-testid="experience-list"]')).toContainText("GoTo Financial");
+    await expect(wsPage.locator('[data-testid="experience-facts-list"]')).toContainText("Built RBAC for three roles");
+    await expect(wsPage.locator('[data-testid="experience-facts-list"]')).toContainText("Scaled API to 10k requests/second");
+
+    // 6. Add a Skill and Save Skills
+    await wsPage.locator('[data-testid="input-skill-entry"]').fill("Rust");
+    await wsPage.locator('[data-testid="btn-add-skill-tag"]').click();
+    await expect(wsPage.locator('[data-testid="skill-chip-Rust"]')).toBeVisible();
+
+    await wsPage.locator('[data-testid="btn-save-skills"]').click();
+    await expect(wsPage.locator('[data-testid="skills-save-status"]')).toBeVisible();
+
+    // 7. RELOAD the Workspace (Critical S5 Verification)
+    await wsPage.reload();
+
+    // Navigate to Profile again
+    await wsPage.locator('[data-testid="nav-profile"]').click();
+    await expect(wsPage.locator('[data-testid="profile-view"]')).toBeVisible({ timeout: 5000 });
+
+    // 8. Assert exact canonical values are preserved across reload!
+    await expect(wsPage.locator('[data-testid="input-fullname"]')).toHaveValue("Jane Doe");
+    await expect(wsPage.locator('[data-testid="input-email"]')).toHaveValue("jane.doe@workit.dev");
+    await expect(wsPage.locator('[data-testid="input-location"]')).toHaveValue("Jakarta, Indonesia");
+    await expect(wsPage.locator('[data-testid="input-linkedin"]')).toHaveValue("https://linkedin.com/in/janedoe");
+
+    // Assert experience and facts persisted
+    await expect(wsPage.locator('[data-testid="experience-list"]')).toContainText("Lead Software Engineer");
+    await expect(wsPage.locator('[data-testid="experience-facts-list"]')).toContainText("Built RBAC for three roles");
+
+    // Assert skills persisted
+    await expect(wsPage.locator('[data-testid="skill-chip-Rust"]')).toBeVisible();
+
+    await context.close();
+  });
+});
+

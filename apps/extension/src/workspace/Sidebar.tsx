@@ -1,8 +1,12 @@
+export type WorkspaceView = "jobs" | "profile";
+
 interface SidebarProps {
   activeCount: number;
+  currentView: WorkspaceView;
+  onSelectView: (view: WorkspaceView) => void;
 }
 
-export function Sidebar({ activeCount }: SidebarProps) {
+export function Sidebar({ activeCount, currentView, onSelectView }: SidebarProps) {
   return (
     <aside className="workspace-sidebar" data-testid="workspace-sidebar">
       <div className="sidebar-header">
@@ -11,7 +15,13 @@ export function Sidebar({ activeCount }: SidebarProps) {
       </div>
 
       <nav className="sidebar-nav">
-        <div className="nav-item is-active" data-testid="nav-jobs">
+        <div
+          className={`nav-item ${currentView === "jobs" ? "is-active" : ""}`}
+          data-testid="nav-jobs"
+          onClick={() => onSelectView("jobs")}
+          role="button"
+          tabIndex={0}
+        >
           <svg
             width="16"
             height="16"
@@ -27,6 +37,29 @@ export function Sidebar({ activeCount }: SidebarProps) {
           </svg>
           <span>Jobs</span>
           {activeCount > 0 && <span className="nav-item-badge">{activeCount}</span>}
+        </div>
+
+        <div
+          className={`nav-item ${currentView === "profile" ? "is-active" : ""}`}
+          data-testid="nav-profile"
+          onClick={() => onSelectView("profile")}
+          role="button"
+          tabIndex={0}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="8" r="5" />
+            <path d="M20 21a8 8 0 0 0-16 0" />
+          </svg>
+          <span>Profile</span>
         </div>
 
         <div className="nav-item is-disabled" title="Coming in S12" data-testid="nav-search">
@@ -45,24 +78,6 @@ export function Sidebar({ activeCount }: SidebarProps) {
           </svg>
           <span>Search</span>
           <span className="nav-item-badge">⌘K</span>
-        </div>
-
-        <div className="nav-item is-disabled" title="Coming in S5" data-testid="nav-profile">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="8" r="5" />
-            <path d="M20 21a8 8 0 0 0-16 0" />
-          </svg>
-          <span>Profile</span>
-          <span className="nav-item-badge">S5</span>
         </div>
       </nav>
     </aside>

@@ -8,3 +8,11 @@ export {
   type CandidateIdentity,
   type ExistingOpportunitySummary,
 } from "./opportunity/duplicate.js";
+export type {
+  CareerProfile,
+  ProfileExperienceFact,
+  ProfileExperience,
+  ProfileEducation,
+  ProfileSkill,
+  FullCareerProfile,
+} from "./profile/types.js";

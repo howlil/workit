@@ -3,6 +3,14 @@ import type {
   SaveOpportunityResponse,
   OpportunityCheckResponse,
   OpportunityState,
+  FullCareerProfile,
+  CareerProfile,
+  ProfileExperience,
+  ProfileEducation,
+  ProfileSkill,
+  UpdateProfileIdentityRequest,
+  CreateExperienceRequest,
+  CreateEducationRequest,
 } from "@workit/contracts";
 import {
   type Opportunity,
@@ -250,6 +258,257 @@ export class WorkitApiClient {
       return raw ? JSON.parse(raw) : null;
     }
     return null;
+  }
+
+  // --- Profile Methods (S5) ---
+
+  async getProfile(userId = "usr_default"): Promise<FullCareerProfile> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/profile`, {
+        headers: { "x-user-id": userId },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as FullCareerProfile;
+        await this.saveLocalProfile(data, userId);
+        return data;
+      }
+    } catch {
+      // Backend offline; fall through to local cache
+    }
+    return this.getLocalProfile(userId);
+  }
+
+  async updateProfileIdentity(
+    req: UpdateProfileIdentityRequest,
+    userId = "usr_default"
+  ): Promise<CareerProfile> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/profile`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify(req),
+      });
+      if (res.ok) {
+        const updated = (await res.json()) as CareerProfile;
+        const local = await this.getLocalProfile(userId);
+        local.profile = updated;
+        await this.saveLocalProfile(local, userId);
+        return updated;
+      }
+    } catch {
+      // Backend offline; fall through to local cache
+    }
+
+    const local = await this.getLocalProfile(userId);
+    local.profile = {
+      ...local.profile,
+      ...req,
+      updatedAt: new Date().toISOString(),
+    };
+    await this.saveLocalProfile(local, userId);
+    return local.profile;
+  }
+
+  async addExperience(
+    req: CreateExperienceRequest,
+    userId = "usr_default"
+  ): Promise<ProfileExperience> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/profile/experiences`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify(req),
+      });
+      if (res.ok) {
+        const exp = (await res.json()) as ProfileExperience;
+        const local = await this.getLocalProfile(userId);
+        local.experiences.unshift(exp);
+        await this.saveLocalProfile(local, userId);
+        return exp;
+      }
+    } catch {
+      // Backend offline; fall through to local cache
+    }
+
+    const local = await this.getLocalProfile(userId);
+    const expId = `exp_${Date.now()}`;
+    const exp: ProfileExperience = {
+      id: expId,
+      profileId: local.profile.id,
+      company: req.company,
+      title: req.title,
+      location: req.location,
+      startDate: req.startDate,
+      endDate: req.endDate,
+      isCurrent: Boolean(req.isCurrent),
+      description: req.description,
+      facts: (req.facts || []).map((factText, idx) => ({
+        id: `fact_${Date.now()}_${idx}`,
+        experienceId: expId,
+        factText: factText.trim(),
+        factType: "achievement",
+      })),
+    };
+    local.experiences.unshift(exp);
+    await this.saveLocalProfile(local, userId);
+    return exp;
+  }
+
+  async deleteExperience(id: string, userId = "usr_default"): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/api/profile/experiences/${id}`, {
+        method: "DELETE",
+        headers: { "x-user-id": userId },
+      });
+    } catch {
+      // Backend offline
+    }
+
+    const local = await this.getLocalProfile(userId);
+    local.experiences = local.experiences.filter((e) => e.id !== id);
+    await this.saveLocalProfile(local, userId);
+  }
+
+  async addEducation(
+    req: CreateEducationRequest,
+    userId = "usr_default"
+  ): Promise<ProfileEducation> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/profile/education`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify(req),
+      });
+      if (res.ok) {
+        const edu = (await res.json()) as ProfileEducation;
+        const local = await this.getLocalProfile(userId);
+        local.education.unshift(edu);
+        await this.saveLocalProfile(local, userId);
+        return edu;
+      }
+    } catch {
+      // Backend offline
+    }
+
+    const local = await this.getLocalProfile(userId);
+    const edu: ProfileEducation = {
+      id: `edu_${Date.now()}`,
+      profileId: local.profile.id,
+      institution: req.institution,
+      degree: req.degree,
+      fieldOfStudy: req.fieldOfStudy,
+      startDate: req.startDate,
+      endDate: req.endDate,
+    };
+    local.education.unshift(edu);
+    await this.saveLocalProfile(local, userId);
+    return edu;
+  }
+
+  async deleteEducation(id: string, userId = "usr_default"): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/api/profile/education/${id}`, {
+        method: "DELETE",
+        headers: { "x-user-id": userId },
+      });
+    } catch {
+      // Backend offline
+    }
+
+    const local = await this.getLocalProfile(userId);
+    local.education = local.education.filter((e) => e.id !== id);
+    await this.saveLocalProfile(local, userId);
+  }
+
+  async setSkills(skills: string[], userId = "usr_default"): Promise<ProfileSkill[]> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/profile/skills`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify({ skills }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { skills: ProfileSkill[] };
+        const local = await this.getLocalProfile(userId);
+        local.skills = data.skills;
+        await this.saveLocalProfile(local, userId);
+        return data.skills;
+      }
+    } catch {
+      // Backend offline
+    }
+
+    const local = await this.getLocalProfile(userId);
+    const skillList: ProfileSkill[] = skills
+      .filter((s) => s.trim().length > 0)
+      .map((name, idx) => ({
+        id: `skl_${Date.now()}_${idx}`,
+        profileId: local.profile.id,
+        name: name.trim(),
+      }));
+    local.skills = skillList;
+    await this.saveLocalProfile(local, userId);
+    return skillList;
+  }
+
+  private async getLocalProfile(userId = "usr_default"): Promise<FullCareerProfile> {
+    const key = `workit_profile_${userId}`;
+    let data: FullCareerProfile | null = null;
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      const items = await chrome.storage.local.get(key);
+      data = items[key] || null;
+    } else if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(key);
+      data = raw ? JSON.parse(raw) : null;
+    }
+
+    if (data && data.profile) {
+      return data;
+    }
+
+    const now = new Date().toISOString();
+    const defaultProfile: FullCareerProfile = {
+      profile: {
+        id: `prof_${userId}`,
+        userId,
+        fullName: "Alex Developer",
+        email: "alex@example.com",
+        phone: "+1 555-0199",
+        location: "San Francisco, CA",
+        linkedinUrl: "https://linkedin.com/in/alexdev",
+        portfolioUrl: "https://alexdev.me",
+        githubUrl: "https://github.com/alexdev",
+        summary: "Full-stack engineer specializing in TypeScript, React, and cloud architectures.",
+        createdAt: now,
+        updatedAt: now,
+      },
+      experiences: [],
+      education: [],
+      skills: [],
+    };
+    await this.saveLocalProfile(defaultProfile, userId);
+    return defaultProfile;
+  }
+
+  private async saveLocalProfile(profile: FullCareerProfile, userId = "usr_default"): Promise<void> {
+    const key = `workit_profile_${userId}`;
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      await chrome.storage.local.set({ [key]: profile });
+    } else if (typeof localStorage !== "undefined") {
+      localStorage.setItem(key, JSON.stringify(profile));
+    }
   }
 }
 

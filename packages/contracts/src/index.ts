@@ -5,3 +5,15 @@ export type {
   SaveOpportunityResponse,
   OpportunityCheckResponse,
 } from "./api/opportunity.js";
+export type {
+  CareerProfile,
+  ProfileExperience,
+  ProfileExperienceFact,
+  ProfileEducation,
+  ProfileSkill,
+  FullCareerProfile,
+  UpdateProfileIdentityRequest,
+  CreateExperienceRequest,
+  CreateEducationRequest,
+  UpdateSkillsRequest,
+} from "./profile.js";
