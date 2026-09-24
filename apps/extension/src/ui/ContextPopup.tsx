@@ -4,6 +4,20 @@ import { contextController } from "../browser/context-controller";
 import { workitApiClient } from "../runtime/api-client";
 import { autofillEngine } from "../autofill/autofill-engine";
 import type { AutofillPlan } from "../autofill/types";
+import { scanPageQuestions } from "../autofill/detect/scan-questions";
+import { writeTextInput } from "../autofill/write/text-input-writer";
+import { verifyFieldValue } from "../autofill/verify/verify-field";
+import type { AnswerMemoryItem } from "@workit/domain";
+
+export interface SuggestedAnswerMatch {
+  element: HTMLTextAreaElement | HTMLInputElement;
+  fieldId: string;
+  question: string;
+  matchedAnswer: AnswerMemoryItem;
+  similarityScore: number;
+  matchStrategy: string;
+  isFilled?: boolean;
+}
 
 interface ContextPopupProps {
   browserContext: BrowserContext;
@@ -17,6 +31,7 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
   const [autofillResultMsg, setAutofillResultMsg] = useState<string | null>(null);
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [applicationState, setApplicationState] = useState<"saved" | "applying" | "applied">("saved");
+  const [suggestedAnswers, setSuggestedAnswers] = useState<SuggestedAnswerMatch[]>([]);
 
   const handleStartApplying = async () => {
     if (browserContext.type !== "saved-job") return;
@@ -48,6 +63,27 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
     }
   };
 
+  const handleUseAnswer = async (suggestion: SuggestedAnswerMatch) => {
+    writeTextInput(suggestion.element, suggestion.matchedAnswer.answerText);
+    const verified = await verifyFieldValue(
+      suggestion.element,
+      suggestion.matchedAnswer.answerText
+    );
+    if (verified) {
+      setSuggestedAnswers((prev) =>
+        prev.map((s) =>
+          s.fieldId === suggestion.fieldId ? { ...s, isFilled: true } : s
+        )
+      );
+      // Increment usage count in backend / storage
+      workitApiClient.saveAnswer({
+        questionText: suggestion.question,
+        answerText: suggestion.matchedAnswer.answerText,
+        category: suggestion.matchedAnswer.category,
+      });
+    }
+  };
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -62,7 +98,7 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
     };
   }, [onClose]);
 
-  // Scan host document for application form fields and match against profile
+  // Scan host document for application form fields and match against profile & answer memory
   useEffect(() => {
     let mounted = true;
 
@@ -73,6 +109,27 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
         const plan = autofillEngine.createPlan(profile, document);
         if (plan.items.length > 0) {
           setAutofillPlan(plan);
+        }
+
+        // Scan for employer questions and match against Answer Memory
+        const questions = scanPageQuestions(document);
+        const matches: SuggestedAnswerMatch[] = [];
+        for (const q of questions) {
+          const res = await workitApiClient.findAnswerMatch({ questionText: q.questionText });
+          if (res.match && res.match.similarityScore >= 0.5) {
+            matches.push({
+              element: q.element,
+              fieldId: q.fieldId,
+              question: q.questionText,
+              matchedAnswer: res.match.item,
+              similarityScore: res.match.similarityScore,
+              matchStrategy: res.match.matchStrategy,
+              isFilled: false,
+            });
+          }
+        }
+        if (mounted && matches.length > 0) {
+          setSuggestedAnswers(matches);
         }
       } catch (err) {
         console.error("[Workit] Failed to scan form fields:", err);
@@ -378,6 +435,84 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
                 {autofillResultMsg}
               </div>
             )}
+          </div>
+        )}
+
+        {/* S8 — Answer Memory Suggestions */}
+        {suggestedAnswers.length > 0 && (
+          <div className="workit-autofill-section" data-testid="workit-answer-memory-section" style={{ marginTop: 14 }}>
+            <div className="workit-autofill-header">
+              <div className="workit-autofill-title">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span>Answer Memory</span>
+              </div>
+              <span className="workit-chip is-green" data-testid="answer-suggestion-count">
+                {suggestedAnswers.filter((s) => !s.isFilled).length} match
+              </span>
+            </div>
+
+            <div className="workit-autofill-list">
+              {suggestedAnswers.map((suggestion) => (
+                <div
+                  key={suggestion.fieldId}
+                  className="workit-autofill-item"
+                  style={{ flexDirection: "column", alignItems: "flex-start", gap: 6, padding: "10px 12px" }}
+                  data-testid={`answer-suggestion-${suggestion.fieldId}`}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: "#111" }}>
+                      {suggestion.question}
+                    </span>
+                    <span className="workit-chip" style={{ fontSize: 11 }}>
+                      {Math.round(suggestion.similarityScore * 100)}% match
+                    </span>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "#555",
+                      margin: 0,
+                      lineHeight: 1.4,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
+                    title={suggestion.matchedAnswer.answerText}
+                  >
+                    {suggestion.matchedAnswer.answerText}
+                  </p>
+                  <div style={{ marginTop: 4, width: "100%", display: "flex", justifyContent: "flex-end" }}>
+                    {suggestion.isFilled ? (
+                      <span className="workit-chip is-green" data-testid={`answer-filled-${suggestion.fieldId}`}>
+                        Filled & verified ✓
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="workit-primary-btn"
+                        style={{ padding: "6px 14px", fontSize: 12 }}
+                        data-testid="btn-use-answer"
+                        onClick={() => handleUseAnswer(suggestion)}
+                      >
+                        Use Answer
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

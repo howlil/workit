@@ -3,14 +3,17 @@ import {
   D1OpportunityRepository,
   D1ProfileRepository,
   D1ApplicationRepository,
+  D1AnswerMemoryRepository,
   type D1DatabaseLike,
 } from "@workit/db";
 import { OpportunityService } from "./services/opportunity.js";
 import { ProfileService } from "./services/profile.js";
 import { ApplicationService } from "./services/application.js";
+import { AnswerService } from "./services/answers.js";
 import { createOpportunityRouter } from "./http/opportunities.js";
 import { createProfileRouter } from "./http/profile.js";
 import { createApplicationRouter } from "./http/application.js";
+import { createAnswerRouter } from "./http/answers.js";
 
 type Bindings = {
   DB?: D1DatabaseLike;
@@ -51,6 +54,11 @@ export function getApplicationService(db: D1DatabaseLike): ApplicationService {
   return new ApplicationService(repo);
 }
 
+export function getAnswerService(db: D1DatabaseLike): AnswerService {
+  const repo = new D1AnswerMemoryRepository(db);
+  return new AnswerService(repo);
+}
+
 // Memory fallback database for development / tests without active D1 binding
 class MemoryD1Database implements D1DatabaseLike {
   private rows = {
@@ -64,6 +72,7 @@ class MemoryD1Database implements D1DatabaseLike {
     applications: new Map<string, any>(),
     applicationEvents: new Map<string, any>(),
     submittedAnswers: new Map<string, any>(),
+    answerMemories: new Map<string, any>(),
   };
 
   prepare(sql: string) {
@@ -292,6 +301,44 @@ class MemoryD1Database implements D1DatabaseLike {
       return [];
     }
 
+    // Answer Memories
+    if (s.includes("FROM answer_memories WHERE user_id = ? AND question_key = ?")) {
+      const [userId, questionKey] = bound;
+      for (const ans of this.rows.answerMemories.values()) {
+        if (ans.user_id === userId && ans.question_key === questionKey) return [{ ...ans }];
+      }
+      return [];
+    }
+    if (s.startsWith("UPDATE answer_memories SET")) {
+      const [question_text, answer_text, category, usage_count, last_used_at, updated_at, id, user_id] = bound;
+      const ans = this.rows.answerMemories.get(id);
+      if (ans && ans.user_id === user_id) {
+        Object.assign(ans, { question_text, answer_text, category, usage_count, last_used_at, updated_at });
+      }
+      return [];
+    }
+    if (s.startsWith("INSERT INTO answer_memories")) {
+      const [id, user_id, question_key, question_text, answer_text, category, usage_count, last_used_at, created_at, updated_at] = bound;
+      this.rows.answerMemories.set(id, { id, user_id, question_key, question_text, answer_text, category, usage_count, last_used_at, created_at, updated_at });
+      return [];
+    }
+    if (s.includes("FROM answer_memories WHERE user_id = ?")) {
+      const [userId] = bound;
+      const results: any[] = [];
+      for (const ans of this.rows.answerMemories.values()) {
+        if (ans.user_id === userId) results.push({ ...ans });
+      }
+      return results.sort((a, b) => b.last_used_at.localeCompare(a.last_used_at));
+    }
+    if (s.startsWith("DELETE FROM answer_memories WHERE id = ? AND user_id = ?")) {
+      const [id, userId] = bound;
+      const ans = this.rows.answerMemories.get(id);
+      if (ans && ans.user_id === userId) {
+        this.rows.answerMemories.delete(id);
+      }
+      return [];
+    }
+
     return [];
   }
 }
@@ -313,8 +360,14 @@ const applicationRouter = createApplicationRouter((c) => {
   return getApplicationService(db);
 });
 
+const answerRouter = createAnswerRouter((c) => {
+  const db = c.env?.DB || sharedDevDb;
+  return getAnswerService(db);
+});
+
 app.route("/api/opportunities", opportunityRouter);
 app.route("/api/profile", profileRouter);
 app.route("/api/applications", applicationRouter);
+app.route("/api/answers", answerRouter);
 
 export default app;

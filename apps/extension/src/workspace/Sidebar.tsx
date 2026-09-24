@@ -1,4 +1,4 @@
-export type WorkspaceView = "jobs" | "profile";
+export type WorkspaceView = "jobs" | "profile" | "answers";
 
 interface SidebarProps {
   activeCount: number;
@@ -60,6 +60,28 @@ export function Sidebar({ activeCount, currentView, onSelectView }: SidebarProps
             <path d="M20 21a8 8 0 0 0-16 0" />
           </svg>
           <span>Profile</span>
+        </div>
+
+        <div
+          className={`nav-item ${currentView === "answers" ? "is-active" : ""}`}
+          data-testid="nav-answers"
+          onClick={() => onSelectView("answers")}
+          role="button"
+          tabIndex={0}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span>Answers</span>
         </div>
 
         <div className="nav-item is-disabled" title="Coming in S12" data-testid="nav-search">

@@ -6,6 +6,7 @@ import { Sidebar, type WorkspaceView } from "./Sidebar";
 import { JobsTable } from "./JobsTable";
 import { SelectedJobPreview } from "./SelectedJobPreview";
 import { ProfileView } from "./ProfileView";
+import { AnswersView } from "./AnswersView";
 
 type FilterTab = "all" | OpportunityState;
 
@@ -113,7 +114,7 @@ export function WorkspaceApp() {
               )}
             </div>
           </>
-        ) : (
+        ) : currentView === "profile" ? (
           <>
             <header className="workspace-header">
               <div className="workspace-title-row">
@@ -122,6 +123,16 @@ export function WorkspaceApp() {
             </header>
 
             <ProfileView />
+          </>
+        ) : (
+          <>
+            <header className="workspace-header">
+              <div className="workspace-title-row">
+                <h1 className="workspace-title">Answer Memory</h1>
+              </div>
+            </header>
+
+            <AnswersView />
           </>
         )}
       </main>

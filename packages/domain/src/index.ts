@@ -27,4 +27,15 @@ export {
   transitionApplication,
   InvalidStateTransitionError,
 } from "./application/lifecycle.js";
+export type {
+  AnswerMemoryItem,
+  AnswerMatchResult,
+  AnswerMatchStrategy,
+} from "./answers/types.js";
+export {
+  normalizeQuestion,
+  extractQuestionTokens,
+} from "./answers/normalize-question.js";
+export { findBestAnswerMatch } from "./answers/match-answer.js";
+
 

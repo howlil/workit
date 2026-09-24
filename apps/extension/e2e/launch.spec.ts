@@ -652,5 +652,78 @@ test.describe("S7 — Application Lifecycle + Historical Snapshot E2E", () => {
   });
 });
 
+test.describe("S8 — Answer Memory E2E", () => {
+  test("saves reusable answer in workspace -> suggests answer on matching application form question -> fills and verifies textarea", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    let [background] = context.serviceWorkers();
+    if (!background) {
+      background = await context.waitForEvent("serviceworker");
+    }
+    const extensionId = background.url().split("/")[2];
+
+    // 1. Open Workspace and go to Answers
+    const wsPage = await context.newPage();
+    await wsPage.goto(`chrome-extension://${extensionId}/workspace.html`);
+
+    await wsPage.click('[data-testid="nav-answers"]');
+    await expect(wsPage.locator('[data-testid="answers-view"]')).toBeVisible({ timeout: 5000 });
+
+    // 2. Add reusable answer
+    await wsPage.click('[data-testid="btn-add-answer"]');
+    await expect(wsPage.locator('[data-testid="add-answer-form"]')).toBeVisible();
+
+    await wsPage.fill('[data-testid="input-new-question"]', "Why do you want to work at our company?");
+    await wsPage.fill(
+      '[data-testid="input-new-answer"]',
+      "I am excited to build scalable developer tooling that empowers engineers."
+    );
+    await wsPage.fill('[data-testid="input-new-category"]', "motivation");
+    await wsPage.click('[data-testid="btn-save-answer-submit"]');
+
+    await expect(wsPage.locator('[data-testid="answer-save-success"]')).toBeVisible({ timeout: 5000 });
+    await expect(wsPage.locator('text="Why do you want to work at our company?"')).toBeVisible();
+
+    // 3. Open application form with employer questions
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${serverPort}/forms/application-form.html`);
+
+    const workitHost = page.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    // 4. Open Workit Popup
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    // 5. Verify Answer Memory section is suggested
+    const answerSection = workitHost.locator('[data-testid="workit-answer-memory-section"]');
+    await expect(answerSection).toBeVisible({ timeout: 5000 });
+
+    // 6. Click "Use Answer"
+    const useAnswerBtn = workitHost.locator('[data-testid="btn-use-answer"]');
+    await expect(useAnswerBtn).toBeVisible();
+    await useAnswerBtn.click();
+
+    // 7. Verify Answer in host textarea
+    const motivationTextarea = page.locator("#applicant-motivation");
+    await expect(motivationTextarea).toHaveValue(
+      "I am excited to build scalable developer tooling that empowers engineers."
+    );
+
+    // 8. Verify popup status updated to "Filled & verified ✓"
+    await expect(workitHost.locator('text="Filled & verified ✓"')).toBeVisible();
+
+    await context.close();
+  });
+});
+
 
 

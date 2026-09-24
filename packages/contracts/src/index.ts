@@ -24,3 +24,9 @@ export type {
   ConfirmSubmissionResponse,
   ApplicationDetailResponse,
 } from "./application.js";
+export type {
+  SaveAnswerMemoryRequest,
+  ListAnswerMemoriesResponse,
+  FindAnswerMatchRequest,
+  FindAnswerMatchResponse,
+} from "./answers.js";

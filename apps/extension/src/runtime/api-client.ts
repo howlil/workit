@@ -15,11 +15,18 @@ import type {
   ConfirmSubmissionRequest,
   ConfirmSubmissionResponse,
   ApplicationDetailResponse,
+  SaveAnswerMemoryRequest,
+  ListAnswerMemoriesResponse,
+  FindAnswerMatchRequest,
+  FindAnswerMatchResponse,
 } from "@workit/contracts";
 import {
   type Opportunity,
   type JobSnapshot,
+  type AnswerMemoryItem,
   normalizeUrl,
+  normalizeQuestion,
+  findBestAnswerMatch,
 } from "@workit/domain";
 
 const DEFAULT_API_BASE = "http://localhost:8787";
@@ -647,6 +654,158 @@ export class WorkitApiClient {
       item.opportunity.updatedAt = new Date().toISOString();
       await this.persistLocalItem(item.opportunity, item.currentSnapshot);
     }
+  }
+
+  // --- Answer Memory ---
+
+  private async getLocalAnswers(userId: string): Promise<AnswerMemoryItem[]> {
+    try {
+      if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+        const key = `workit_answers_${userId}`;
+        const res = await chrome.storage.local.get([key]);
+        return (res[key] as AnswerMemoryItem[]) || [];
+      } else if (typeof localStorage !== "undefined") {
+        const raw = localStorage.getItem(`workit_answers_${userId}`);
+        return raw ? JSON.parse(raw) : [];
+      }
+    } catch {
+      // Fallback
+    }
+    return [];
+  }
+
+  private async setLocalAnswers(userId: string, items: AnswerMemoryItem[]): Promise<void> {
+    try {
+      if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.local) {
+        await chrome.storage.local.set({ [`workit_answers_${userId}`]: items });
+      } else if (typeof localStorage !== "undefined") {
+        localStorage.setItem(`workit_answers_${userId}`, JSON.stringify(items));
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  async saveAnswer(
+    req: SaveAnswerMemoryRequest,
+    userId = "usr_default"
+  ): Promise<AnswerMemoryItem> {
+    const questionKey = normalizeQuestion(req.questionText);
+    const now = new Date().toISOString();
+
+    try {
+      const res = await fetch(`${this.baseUrl}/api/answers`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify(req),
+      });
+
+      if (res.ok) {
+        const item = (await res.json()) as AnswerMemoryItem;
+        const current = await this.getLocalAnswers(userId);
+        const filtered = current.filter((a) => a.id !== item.id && a.questionKey !== item.questionKey);
+        await this.setLocalAnswers(userId, [item, ...filtered]);
+        return item;
+      }
+    } catch {
+      // Server not reachable, fall back to local storage
+    }
+
+    const current = await this.getLocalAnswers(userId);
+    const existingIndex = current.findIndex((a) => a.questionKey === questionKey);
+    let item: AnswerMemoryItem;
+
+    if (existingIndex >= 0 && current[existingIndex]) {
+      const existing = current[existingIndex]!;
+      item = {
+        ...existing,
+        questionText: req.questionText,
+        answerText: req.answerText,
+        category: req.category ?? existing.category,
+        usageCount: existing.usageCount + 1,
+        lastUsedAt: now,
+        updatedAt: now,
+      };
+      current[existingIndex] = item;
+    } else {
+      item = {
+        id: `ans_${Date.now()}`,
+        userId,
+        questionKey,
+        questionText: req.questionText,
+        answerText: req.answerText,
+        category: req.category,
+        usageCount: 1,
+        lastUsedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      };
+      current.unshift(item);
+    }
+
+    await this.setLocalAnswers(userId, current);
+    return item;
+  }
+
+  async listAnswers(userId = "usr_default"): Promise<ListAnswerMemoriesResponse> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/answers`, {
+        headers: { "x-user-id": userId },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as ListAnswerMemoriesResponse;
+        await this.setLocalAnswers(userId, data.answers);
+        return data;
+      }
+    } catch {
+      // Server not reachable
+    }
+
+    const answers = await this.getLocalAnswers(userId);
+    return { answers };
+  }
+
+  async findAnswerMatch(
+    req: FindAnswerMatchRequest,
+    userId = "usr_default"
+  ): Promise<FindAnswerMatchResponse> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/answers/match`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify(req),
+      });
+      if (res.ok) {
+        return (await res.json()) as FindAnswerMatchResponse;
+      }
+    } catch {
+      // Fallback to local matching
+    }
+
+    const answers = await this.getLocalAnswers(userId);
+    const match = findBestAnswerMatch(req.questionText, answers, req.threshold);
+    return { match };
+  }
+
+  async deleteAnswer(id: string, userId = "usr_default"): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/api/answers/${id}`, {
+        method: "DELETE",
+        headers: { "x-user-id": userId },
+      });
+    } catch {
+      // Fallback
+    }
+
+    const current = await this.getLocalAnswers(userId);
+    const filtered = current.filter((a) => a.id !== id);
+    await this.setLocalAnswers(userId, filtered);
   }
 }
 
