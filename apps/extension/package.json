@@ -10,19 +10,20 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "@workit/domain": "workspace:*",
     "@workit/contracts": "workspace:*",
-    "@workit/shared": "workspace:*"
+    "@workit/domain": "workspace:*",
+    "@workit/shared": "workspace:*",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "wxt": "^0.20.5",
-    "@wxt-dev/module-react": "^1.1.3",
-    "typescript": "catalog:",
+    "@playwright/test": "^1.52.0",
+    "@types/chrome": "^0.0.318",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
-    "@types/chrome": "^0.0.318",
-    "@playwright/test": "^1.52.0"
+    "@wxt-dev/module-react": "^1.1.3",
+    "happy-dom": "^20.14.5",
+    "typescript": "catalog:",
+    "wxt": "^0.20.5"
   }
 }
