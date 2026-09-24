@@ -19,14 +19,18 @@ import type {
   ListAnswerMemoriesResponse,
   FindAnswerMatchRequest,
   FindAnswerMatchResponse,
+  JobMatchResponse,
 } from "@workit/contracts";
 import {
   type Opportunity,
   type JobSnapshot,
   type AnswerMemoryItem,
+  type JobMatchAnalysis,
   normalizeUrl,
   normalizeQuestion,
   findBestAnswerMatch,
+  extractRequirements,
+  matchRequirements,
 } from "@workit/domain";
 
 const DEFAULT_API_BASE = "http://localhost:8787";
@@ -806,6 +810,34 @@ export class WorkitApiClient {
     const current = await this.getLocalAnswers(userId);
     const filtered = current.filter((a) => a.id !== id);
     await this.setLocalAnswers(userId, filtered);
+  }
+
+  // --- Evidence Match ---
+
+  async matchJobEvidence(
+    jobDescription: string,
+    userId = "usr_default"
+  ): Promise<JobMatchAnalysis> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/evidence/match`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify({ jobDescription }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as JobMatchResponse;
+        return data.analysis;
+      }
+    } catch {
+      // Fallback to local profile matching
+    }
+
+    const profile = await this.getProfile(userId);
+    const requirements = extractRequirements(jobDescription);
+    return matchRequirements(requirements, profile);
   }
 }
 

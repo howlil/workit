@@ -30,3 +30,11 @@ export type {
   FindAnswerMatchRequest,
   FindAnswerMatchResponse,
 } from "./answers.js";
+export type {
+  JobMatchRequest,
+  JobMatchResponse,
+  JobRequirement,
+  RequirementMatch,
+  RequirementMatchStatus,
+  JobMatchAnalysis,
+} from "./evidence.js";

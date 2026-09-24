@@ -7,7 +7,7 @@ import type { AutofillPlan } from "../autofill/types";
 import { scanPageQuestions } from "../autofill/detect/scan-questions";
 import { writeTextInput } from "../autofill/write/text-input-writer";
 import { verifyFieldValue } from "../autofill/verify/verify-field";
-import type { AnswerMemoryItem } from "@workit/domain";
+import type { AnswerMemoryItem, JobMatchAnalysis } from "@workit/domain";
 
 export interface SuggestedAnswerMatch {
   element: HTMLTextAreaElement | HTMLInputElement;
@@ -32,6 +32,7 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [applicationState, setApplicationState] = useState<"saved" | "applying" | "applied">("saved");
   const [suggestedAnswers, setSuggestedAnswers] = useState<SuggestedAnswerMatch[]>([]);
+  const [evidenceMatch, setEvidenceMatch] = useState<JobMatchAnalysis | null>(null);
 
   const handleStartApplying = async () => {
     if (browserContext.type !== "saved-job") return;
@@ -143,6 +144,27 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
     };
   }, []);
 
+  // Compute profile match when a job context is present
+  useEffect(() => {
+    let mounted = true;
+    async function computeMatch() {
+      if (browserContext.type === "job" && browserContext.candidate.descriptionText) {
+        try {
+          const analysis = await workitApiClient.matchJobEvidence(
+            browserContext.candidate.descriptionText
+          );
+          if (mounted) setEvidenceMatch(analysis);
+        } catch (err) {
+          console.error("[Workit] Failed to compute match:", err);
+        }
+      }
+    }
+    computeMatch();
+    return () => {
+      mounted = false;
+    };
+  }, [browserContext]);
+
   const handleAutofill = async () => {
     if (!autofillPlan || isAutofilling) return;
     setIsAutofilling(true);
@@ -250,9 +272,16 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
                 <span className="workit-tag-dot" />
                 <span>Job detected</span>
               </div>
-              <span className="workit-chip is-green" data-testid="workit-strategy-badge">
-                {browserContext.candidate.extraction.strategy === "json-ld" ? "JSON-LD" : "Generic"}
-              </span>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                {evidenceMatch && (
+                  <span className="workit-chip is-green" data-testid="workit-match-badge">
+                    {evidenceMatch.overallScore}% match
+                  </span>
+                )}
+                <span className="workit-chip" data-testid="workit-strategy-badge">
+                  {browserContext.candidate.extraction.strategy === "json-ld" ? "JSON-LD" : "Generic"}
+                </span>
+              </div>
             </div>
 
             <div className="workit-job-preview">
@@ -286,6 +315,28 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
                 <div className="workit-job-snippet" data-testid="workit-job-snippet">
                   {browserContext.candidate.descriptionText.slice(0, 180)}
                   {browserContext.candidate.descriptionText.length > 180 ? "…" : ""}
+                </div>
+              )}
+
+              {evidenceMatch && evidenceMatch.matches.length > 0 && (
+                <div style={{ margin: "10px 0", display: "flex", flexDirection: "column", gap: 6 }} data-testid="popup-match-list">
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#444", textTransform: "uppercase" }}>
+                    Requirements Match ({evidenceMatch.matchedCount}/{evidenceMatch.totalRequirements})
+                  </div>
+                  {evidenceMatch.matches.slice(0, 3).map((m, idx) => (
+                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+                      <span style={{ color: "#333", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>
+                        {m.requirement}
+                      </span>
+                      <span
+                        className={`workit-chip ${m.status === "matched" ? "is-green" : ""}`}
+                        style={{ fontSize: 10, padding: "1px 6px" }}
+                        data-testid={`popup-match-${m.status}`}
+                      >
+                        {m.status === "matched" ? "✓" : m.status === "partial" ? "~" : "✗"}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
 

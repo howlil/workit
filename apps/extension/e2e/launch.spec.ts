@@ -725,5 +725,88 @@ test.describe("S8 — Answer Memory E2E", () => {
   });
 });
 
+test.describe("S9 — Evidence Match E2E", () => {
+  test("analyzes job requirements against career profile facts and displays canonical evidence breakdown", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    let [background] = context.serviceWorkers();
+    if (!background) {
+      background = await context.waitForEvent("serviceworker");
+    }
+    const extensionId = background.url().split("/")[2];
+
+    // 1. Open Workspace and set up profile skills
+    const wsPage = await context.newPage();
+    await wsPage.goto(`chrome-extension://${extensionId}/workspace.html`);
+
+    await wsPage.click('[data-testid="nav-profile"]');
+    await expect(wsPage.locator('[data-testid="profile-view"]')).toBeVisible({ timeout: 5000 });
+
+    // 2. Add skill "TypeScript"
+    await wsPage.fill('[data-testid="input-skill-entry"]', "TypeScript");
+    await wsPage.click('[data-testid="btn-add-skill-tag"]');
+    await wsPage.click('[data-testid="btn-save-skills"]');
+    await expect(wsPage.locator('[data-testid="skills-save-status"]')).toBeVisible({ timeout: 5000 });
+
+    // 3. Open job page (which requires TypeScript & REST APIs)
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${serverPort}/jobs/json-ld-complete.html`);
+
+    const workitHost = page.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    // 4. Open Workit Popup
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    // 5. Verify match score badge is visible in popup
+    const matchBadge = workitHost.locator('[data-testid="workit-match-badge"]');
+    await expect(matchBadge).toBeVisible({ timeout: 5000 });
+
+    // 6. Save the job
+    const saveBtn = workitHost.locator('[data-testid="workit-save-job-btn"]');
+    await saveBtn.click();
+    await expect(workitHost.locator('[data-testid="workit-saved-view"]')).toBeVisible({ timeout: 5000 });
+
+    // 7. Return to Workspace -> Jobs Table
+    await wsPage.bringToFront();
+    await wsPage.click('[data-testid="nav-jobs"]');
+    const jobsTable = wsPage.locator('[data-testid="jobs-table"]');
+    await expect(jobsTable).toBeVisible({ timeout: 5000 });
+
+    // 8. Click on the saved opportunity row
+    const rowTitle = wsPage.locator('[data-testid="opp-row-title"]').first();
+    await rowTitle.click();
+
+    // 9. Assert Requirement Match card in SelectedJobPreview
+    const matchCard = wsPage.locator('[data-testid="evidence-match-card"]');
+    await expect(matchCard).toBeVisible({ timeout: 5000 });
+
+    const overallScore = wsPage.locator('[data-testid="overall-match-score"]');
+    await expect(overallScore).toBeVisible();
+
+    // 10. Assert match items and canonical evidence summary
+    const matchedItems = wsPage.locator('[data-testid="match-item-matched"]');
+    await expect(matchedItems.first()).toBeVisible({ timeout: 5000 });
+
+    const evidenceSummary = wsPage.locator('[data-testid="evidence-summary"]').first();
+    await expect(evidenceSummary).toBeVisible();
+    await expect(evidenceSummary).toContainText("Evidence:");
+
+    const factIdTag = wsPage.locator('[data-testid="evidence-fact-id"]').first();
+    await expect(factIdTag).toBeVisible();
+
+    await context.close();
+  });
+});
+
 
 

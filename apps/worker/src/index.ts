@@ -10,10 +10,12 @@ import { OpportunityService } from "./services/opportunity.js";
 import { ProfileService } from "./services/profile.js";
 import { ApplicationService } from "./services/application.js";
 import { AnswerService } from "./services/answers.js";
+import { EvidenceService } from "./services/evidence.js";
 import { createOpportunityRouter } from "./http/opportunities.js";
 import { createProfileRouter } from "./http/profile.js";
 import { createApplicationRouter } from "./http/application.js";
 import { createAnswerRouter } from "./http/answers.js";
+import { createEvidenceRouter } from "./http/evidence.js";
 
 type Bindings = {
   DB?: D1DatabaseLike;
@@ -57,6 +59,11 @@ export function getApplicationService(db: D1DatabaseLike): ApplicationService {
 export function getAnswerService(db: D1DatabaseLike): AnswerService {
   const repo = new D1AnswerMemoryRepository(db);
   return new AnswerService(repo);
+}
+
+export function getEvidenceService(db: D1DatabaseLike): EvidenceService {
+  const profileRepo = new D1ProfileRepository(db);
+  return new EvidenceService(profileRepo);
 }
 
 // Memory fallback database for development / tests without active D1 binding
@@ -365,9 +372,15 @@ const answerRouter = createAnswerRouter((c) => {
   return getAnswerService(db);
 });
 
+const evidenceRouter = createEvidenceRouter((c) => {
+  const db = c.env?.DB || sharedDevDb;
+  return getEvidenceService(db);
+});
+
 app.route("/api/opportunities", opportunityRouter);
 app.route("/api/profile", profileRouter);
 app.route("/api/applications", applicationRouter);
 app.route("/api/answers", answerRouter);
+app.route("/api/evidence", evidenceRouter);
 
 export default app;

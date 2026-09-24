@@ -1,4 +1,7 @@
+import { useState, useEffect } from "react";
 import type { StoredOpportunityItem } from "../runtime/api-client";
+import { workitApiClient } from "../runtime/api-client";
+import type { JobMatchAnalysis } from "@workit/domain";
 
 interface SelectedJobPreviewProps {
   item: StoredOpportunityItem;
@@ -7,6 +10,28 @@ interface SelectedJobPreviewProps {
 
 export function SelectedJobPreview({ item, onClose }: SelectedJobPreviewProps) {
   const { opportunity, currentSnapshot } = item;
+  const [matchAnalysis, setMatchAnalysis] = useState<JobMatchAnalysis | null>(null);
+  const [isLoadingMatch, setIsLoadingMatch] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadMatch() {
+      if (!currentSnapshot.descriptionText) return;
+      setIsLoadingMatch(true);
+      try {
+        const analysis = await workitApiClient.matchJobEvidence(currentSnapshot.descriptionText);
+        if (mounted) setMatchAnalysis(analysis);
+      } catch (err) {
+        console.error("[Workit] Failed to analyze job match:", err);
+      } finally {
+        if (mounted) setIsLoadingMatch(false);
+      }
+    }
+    loadMatch();
+    return () => {
+      mounted = false;
+    };
+  }, [currentSnapshot.id, currentSnapshot.descriptionText]);
 
   const formatDate = (isoString: string) => {
     try {
@@ -86,6 +111,100 @@ export function SelectedJobPreview({ item, onClose }: SelectedJobPreviewProps) {
         >
           I'm applying
         </button>
+      </div>
+
+      {/* S9 — Evidence Match Card */}
+      <div className="preview-section" data-testid="evidence-match-card">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <div className="preview-section-title" style={{ margin: 0 }}>Requirement Match</div>
+          {matchAnalysis && (
+            <span
+              className={`filter-chip ${matchAnalysis.overallScore >= 70 ? "is-active" : ""}`}
+              style={{ fontWeight: 600 }}
+              data-testid="overall-match-score"
+            >
+              {matchAnalysis.overallScore}% match
+            </span>
+          )}
+        </div>
+
+        {isLoadingMatch ? (
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Analyzing requirements against profile...</div>
+        ) : matchAnalysis && matchAnalysis.matches.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              {matchAnalysis.matchedCount} matched • {matchAnalysis.partialCount} partial • {matchAnalysis.missingCount} missing
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-testid="match-breakdown-list">
+              {matchAnalysis.matches.map((m, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    background: "#f9fafb",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 6,
+                    padding: "8px 12px",
+                    fontSize: 13,
+                  }}
+                  data-testid={`match-item-${m.status}`}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                    <span style={{ fontWeight: 500, color: "#111" }}>{m.requirement}</span>
+                    <span
+                      className={`filter-chip ${m.status === "matched" ? "is-active" : ""}`}
+                      style={{
+                        fontSize: 11,
+                        padding: "2px 8px",
+                        background: m.status === "matched" ? "#E8F5E9" : m.status === "partial" ? "#FFF8E1" : "#F3F4F6",
+                        color: m.status === "matched" ? "#2E7D32" : m.status === "partial" ? "#B45309" : "#6B7280",
+                      }}
+                      data-testid={`status-badge-${m.status}`}
+                    >
+                      {m.status === "matched" ? "✓ Matched" : m.status === "partial" ? "~ Partial" : "✗ Missing"}
+                    </span>
+                  </div>
+
+                  {m.evidenceSummary && (
+                    <div style={{ marginTop: 4, fontSize: 12, color: "#4b5563" }} data-testid="evidence-summary">
+                      {m.status !== "missing" ? (
+                        <span>
+                          <strong style={{ color: "#374151" }}>Evidence: </strong>
+                          {m.evidenceSummary}
+                        </span>
+                      ) : (
+                        <span style={{ color: "#9ca3af" }}>{m.evidenceSummary}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {m.evidenceFactIds.length > 0 && (
+                    <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {m.evidenceFactIds.map((factId) => (
+                        <span
+                          key={factId}
+                          style={{
+                            fontSize: 10,
+                            background: "#e5e7eb",
+                            color: "#374151",
+                            padding: "1px 6px",
+                            borderRadius: 4,
+                            fontFamily: "monospace",
+                          }}
+                          data-testid="evidence-fact-id"
+                        >
+                          {factId}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>No requirements detected in job snapshot.</div>
+        )}
       </div>
 
       <div className="preview-section">

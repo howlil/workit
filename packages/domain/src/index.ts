@@ -37,5 +37,13 @@ export {
   extractQuestionTokens,
 } from "./answers/normalize-question.js";
 export { findBestAnswerMatch } from "./answers/match-answer.js";
+export type {
+  RequirementMatchStatus,
+  JobRequirement,
+  RequirementMatch,
+  JobMatchAnalysis,
+} from "./evidence/types.js";
+export { extractRequirements } from "./evidence/extract-requirements.js";
+export { matchRequirements } from "./evidence/match-profile.js";
 
 
