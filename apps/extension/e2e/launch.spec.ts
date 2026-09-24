@@ -491,3 +491,89 @@ test.describe("S5 — Career Profile E2E", () => {
   });
 });
 
+test.describe("S6 — Basic Autofill E2E", () => {
+  test("scans application form, generates plan from profile, and autofills controlled and native inputs with verification", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    // 1. Setup profile values in workspace first
+    let [background] = context.serviceWorkers();
+    if (!background) {
+      background = await context.waitForEvent("serviceworker");
+    }
+    const extensionId = background.url().split("/")[2];
+
+    const wsPage = await context.newPage();
+    await wsPage.goto(`chrome-extension://${extensionId}/workspace.html`);
+
+    await wsPage.locator('[data-testid="nav-profile"]').click();
+    await wsPage.locator('[data-testid="input-fullname"]').fill("Jane Doe");
+    await wsPage.locator('[data-testid="input-email"]').fill("jane.doe@workit.dev");
+    await wsPage.locator('[data-testid="input-phone"]').fill("+1 555-0199");
+    await wsPage.locator('[data-testid="input-location"]').fill("Jakarta, Indonesia");
+    await wsPage.locator('[data-testid="input-linkedin"]').fill("https://linkedin.com/in/janedoe");
+    await wsPage.locator('[data-testid="input-portfolio"]').fill("https://janedoe.dev");
+    await wsPage.locator('[data-testid="input-summary"]').fill("Passionate engineer building accessible web applications.");
+    await wsPage.locator('[data-testid="btn-save-identity"]').click();
+    await expect(wsPage.locator('[data-testid="identity-save-status"]')).toBeVisible();
+
+    // 2. Open job application form fixture page
+    const formPage = await context.newPage();
+    await formPage.goto(`http://localhost:${serverPort}/forms/application-form.html`);
+
+    const workitHost = formPage.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    // 3. Open Workit Popup
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    const popup = workitHost.locator('[data-testid="workit-popup"]');
+    await expect(popup).toBeVisible();
+
+    // 4. Verify Autofill Assistant is rendered with detected fields
+    const autofillSection = workitHost.locator('[data-testid="workit-autofill-section"]');
+    await expect(autofillSection).toBeVisible({ timeout: 5000 });
+
+    await expect(workitHost.locator('[data-testid="autofill-ready-count"]')).toBeVisible();
+    await expect(workitHost.locator('[data-testid="autofill-item-full_name"]')).toContainText("Jane Doe");
+    await expect(workitHost.locator('[data-testid="autofill-item-email"]')).toContainText("jane.doe@workit.dev");
+    await expect(workitHost.locator('[data-testid="autofill-item-phone"]')).toContainText("+1 555-0199");
+    await expect(workitHost.locator('[data-testid="autofill-item-location"]')).toContainText("Jakarta, Indonesia");
+    await expect(workitHost.locator('[data-testid="autofill-item-linkedin"]')).toContainText("https://linkedin.com/in/janedoe");
+    await expect(workitHost.locator('[data-testid="autofill-item-portfolio"]')).toContainText("https://janedoe.dev");
+
+    // 5. Click "Auto-fill Application"
+    const autofillBtn = workitHost.locator('[data-testid="workit-autofill-btn"]');
+    await autofillBtn.click();
+
+    // 6. Verify success confirmation in popup
+    const successMsg = workitHost.locator('[data-testid="autofill-success-msg"]');
+    await expect(successMsg).toBeVisible({ timeout: 5000 });
+    await expect(successMsg).toContainText("filled & verified ✓");
+
+    // 7. Verify DOM values directly on the host webpage!
+    await expect(formPage.locator("#applicant-name")).toHaveValue("Jane Doe");
+    await expect(formPage.locator("#applicant-email")).toHaveValue("jane.doe@workit.dev");
+    await expect(formPage.locator("#applicant-phone")).toHaveValue("+1 555-0199");
+    await expect(formPage.locator("#applicant-location")).toHaveValue("Jakarta, Indonesia");
+    await expect(formPage.locator("#applicant-linkedin")).toHaveValue("https://linkedin.com/in/janedoe");
+    await expect(formPage.locator("#applicant-portfolio")).toHaveValue("https://janedoe.dev");
+    await expect(formPage.locator("#applicant-summary")).toHaveValue("Passionate engineer building accessible web applications.");
+
+    // 8. Crucial check: verify controlled input synced state tracker got notified
+    const controlledDisplay = formPage.locator("#linkedin-synced-state");
+    await expect(controlledDisplay).toHaveText("State: https://linkedin.com/in/janedoe");
+
+    await context.close();
+  });
+});
+
+

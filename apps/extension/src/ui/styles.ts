@@ -353,4 +353,75 @@ export const WORKIT_SHADOW_STYLES = `
   outline: 2px solid var(--green);
   outline-offset: 2px;
 }
+
+/* Autofill Assistant (S6) */
+.workit-autofill-section {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: var(--radius-card);
+  background: var(--hover);
+  border: 1px solid var(--line);
+}
+
+.workit-autofill-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.workit-autofill-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workit-autofill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.workit-autofill-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 4px 6px;
+  background: var(--white);
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--line);
+}
+
+.workit-autofill-label {
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.workit-autofill-value {
+  font-weight: 500;
+  color: var(--text);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workit-autofill-success {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-chip);
+  background: var(--green-soft);
+  color: var(--green);
+  border: 1px solid var(--green-line);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+}
 `;
+

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import type { BrowserContext } from "../browser/context-controller";
 import { contextController } from "../browser/context-controller";
 import { workitApiClient } from "../runtime/api-client";
+import { autofillEngine } from "../autofill/autofill-engine";
+import type { AutofillPlan } from "../autofill/types";
 
 interface ContextPopupProps {
   browserContext: BrowserContext;
@@ -10,6 +12,11 @@ interface ContextPopupProps {
 
 export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [autofillPlan, setAutofillPlan] = useState<AutofillPlan | null>(null);
+  const [isAutofilling, setIsAutofilling] = useState(false);
+  const [autofillResultMsg, setAutofillResultMsg] = useState<string | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -23,6 +30,48 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
       window.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [onClose]);
+
+  // Scan host document for application form fields and match against profile
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkFormFields() {
+      try {
+        const profile = await workitApiClient.getProfile();
+        if (!mounted) return;
+        const plan = autofillEngine.createPlan(profile, document);
+        if (plan.items.length > 0) {
+          setAutofillPlan(plan);
+        }
+      } catch (err) {
+        console.error("[Workit] Failed to scan form fields:", err);
+      }
+    }
+
+    checkFormFields();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleAutofill = async () => {
+    if (!autofillPlan || isAutofilling) return;
+    setIsAutofilling(true);
+    setAutofillResultMsg(null);
+
+    try {
+      const stats = await autofillEngine.executePlan(autofillPlan);
+      setAutofillResultMsg(
+        `${stats.filled} of ${stats.total} fields filled & verified ✓`
+      );
+    } catch (err) {
+      console.error("[Workit] Failed to execute autofill:", err);
+      setAutofillResultMsg("Autofill encountered an error");
+    } finally {
+      setIsAutofilling(false);
+    }
+  };
 
   return (
     <div
@@ -187,14 +236,85 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
             <p className="workit-empty-message">
               This opportunity is saved in your Workit database with an immutable snapshot.
             </p>
+            {!isApplying ? (
+              <button
+                type="button"
+                className="workit-primary-btn"
+                data-testid="workit-applying-btn"
+                style={{ marginTop: 16 }}
+                onClick={() => setIsApplying(true)}
+              >
+                I'm applying
+              </button>
+            ) : (
+              <div style={{ marginTop: 14 }}>
+                <span className="workit-chip is-green" data-testid="applying-status-chip">
+                  Application In Progress
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* S6 — Autofill Assistant */}
+        {autofillPlan && autofillPlan.items.length > 0 && (
+          <div className="workit-autofill-section" data-testid="workit-autofill-section">
+            <div className="workit-autofill-header">
+              <div className="workit-autofill-title">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                <span>Autofill Assistant</span>
+              </div>
+              <span className="workit-chip is-green" data-testid="autofill-ready-count">
+                {autofillPlan.readyCount} ready
+              </span>
+            </div>
+
+            <div className="workit-autofill-list" data-testid="autofill-fields-list">
+              {autofillPlan.items
+                .filter((item) => item.approved)
+                .map((item) => (
+                  <div
+                    key={item.field.id}
+                    className="workit-autofill-item"
+                    data-testid={`autofill-item-${item.field.semanticType}`}
+                  >
+                    <span className="workit-autofill-label">
+                      {item.field.semanticType.replace("_", " ")}
+                    </span>
+                    <span className="workit-autofill-value" title={item.resolvedValue}>
+                      {item.resolvedValue}
+                    </span>
+                  </div>
+                ))}
+            </div>
+
             <button
               type="button"
               className="workit-primary-btn"
-              data-testid="workit-applying-btn"
-              style={{ marginTop: 16 }}
+              data-testid="workit-autofill-btn"
+              disabled={isAutofilling}
+              onClick={handleAutofill}
             >
-              I'm applying
+              {isAutofilling ? "Filling fields..." : "Auto-fill Application"}
             </button>
+
+            {autofillResultMsg && (
+              <div className="workit-autofill-success" data-testid="autofill-success-msg">
+                {autofillResultMsg}
+              </div>
+            )}
           </div>
         )}
       </div>
