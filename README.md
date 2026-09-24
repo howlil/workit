@@ -8,7 +8,11 @@ The product captures jobs while browsing, keeps the exact context of each applic
 
 - [Product Design](./PRODUCT_DESIGN.md)
 - [Design System](./DESIGN.md)
-- [Engineering Design](./ENGINEERING_DESIGN.md)
+- [Engineering Design](./.agents/ENGINEERING_DESIGN.md)
+
+## Development
+
+Repository workflow and agent rules: [AGENTS.md](./AGENTS.md)
 
 ## Product boundary
 
