@@ -38,3 +38,15 @@ export type {
   RequirementMatchStatus,
   JobMatchAnalysis,
 } from "./evidence.js";
+export type {
+  ResumeArtifact,
+  ResumeDraftProfile,
+  ResumeIdentityDraft,
+  ResumeExperienceDraft,
+  ResumeEducationDraft,
+  ParseResumeRequest,
+  ParseResumeResponse,
+  ConfirmResumeDraftRequest,
+  ConfirmResumeDraftResponse,
+  ListResumesResponse,
+} from "./resume.js";

@@ -9,3 +9,7 @@ export {
   D1AnswerMemoryRepository,
   type UpsertAnswerMemoryInput,
 } from "./repositories/answers.js";
+export {
+  D1ResumeRepository,
+  type SaveResumeArtifactInput,
+} from "./repositories/resume.js";

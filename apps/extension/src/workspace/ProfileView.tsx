@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react";
-import type { FullCareerProfile } from "@workit/contracts";
+import type { FullCareerProfile, ResumeDraftProfile } from "@workit/contracts";
 import { workitApiClient } from "../runtime/api-client";
 
 export function ProfileView() {
   const [profileData, setProfileData] = useState<FullCareerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Resume Import State
+  const [resumeText, setResumeText] = useState("");
+  const [resumeFileName, setResumeFileName] = useState("resume.txt");
+  const [resumeDraft, setResumeDraft] = useState<ResumeDraftProfile | null>(null);
+  const [resumeArtifactId, setResumeArtifactId] = useState<string | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [importStatusMsg, setImportStatusMsg] = useState<string | null>(null);
 
   // Identity Form State
   const [fullName, setFullName] = useState("");
@@ -13,6 +22,7 @@ export function ProfileView() {
   const [location, setLocation] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
   const [portfolioUrl, setPortfolioUrl] = useState("");
+
   const [githubUrl, setGithubUrl] = useState("");
   const [summary, setSummary] = useState("");
   const [identitySaved, setIdentitySaved] = useState(false);
@@ -63,7 +73,72 @@ export function ProfileView() {
     loadProfile();
   }, []);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setResumeFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      if (text) {
+        setResumeText(text);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleParseResume = async () => {
+    if (!resumeText.trim()) return;
+    setIsParsing(true);
+    setImportStatusMsg(null);
+    try {
+      const res = await workitApiClient.parseResumeText(
+        resumeFileName || "resume.txt",
+        resumeText.trim()
+      );
+      setResumeDraft(res.draft);
+      setResumeArtifactId(res.artifactId);
+    } catch (err) {
+      console.error("[Workit] Failed to parse resume:", err);
+      setImportStatusMsg("Failed to parse resume text.");
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const handleConfirmResumeDraft = async () => {
+    if (!resumeDraft) return;
+    setIsConfirming(true);
+    try {
+      const res = await workitApiClient.confirmResumeDraft(
+        resumeDraft,
+        resumeArtifactId || undefined
+      );
+      setProfileData(res.profile);
+      setFullName(res.profile.profile.fullName || "");
+      setEmail(res.profile.profile.email || "");
+      setPhone(res.profile.profile.phone || "");
+      setLocation(res.profile.profile.location || "");
+      setLinkedinUrl(res.profile.profile.linkedinUrl || "");
+      setPortfolioUrl(res.profile.profile.portfolioUrl || "");
+      setGithubUrl(res.profile.profile.githubUrl || "");
+      setSummary(res.profile.profile.summary || "");
+      setSkillTags(res.profile.skills.map((s) => s.name));
+
+      setResumeDraft(null);
+      setResumeText("");
+      setImportStatusMsg("Profile successfully populated from resume! ✓");
+      setTimeout(() => setImportStatusMsg(null), 4000);
+    } catch (err) {
+      console.error("[Workit] Failed to confirm resume draft:", err);
+      setImportStatusMsg("Failed to update profile from draft.");
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
   const handleSaveIdentity = async (e: React.FormEvent) => {
+
     e.preventDefault();
     try {
       const updated = await workitApiClient.updateProfileIdentity({
@@ -219,6 +294,125 @@ export function ProfileView() {
 
   return (
     <div className="profile-container" data-testid="profile-view">
+      {/* 0. Resume Import Card */}
+      <section className="profile-card" data-testid="profile-resume-import-section">
+        <div className="profile-card-header">
+          <div>
+            <h2 className="profile-card-title">Import Resume</h2>
+            <p className="profile-card-desc">
+              Upload a resume or paste text to extract candidate data into a reviewable draft
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+          <div>
+            <label className="form-label" htmlFor="input-resume-file">Upload Resume File (.txt, .md)</label>
+            <input
+              id="input-resume-file"
+              data-testid="input-resume-file"
+              type="file"
+              accept=".txt,.md,.text"
+              onChange={handleFileChange}
+              style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}
+            />
+          </div>
+
+          <div>
+            <label className="form-label" htmlFor="textarea-resume-text">Or Paste Resume Content</label>
+            <textarea
+              id="textarea-resume-text"
+              data-testid="textarea-resume-text"
+              className="form-input"
+              rows={4}
+              placeholder="Paste raw resume text here..."
+              value={resumeText}
+              onChange={(e) => setResumeText(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <button
+              type="button"
+              className="btn-primary"
+              data-testid="btn-parse-resume"
+              disabled={!resumeText.trim() || isParsing}
+              onClick={handleParseResume}
+            >
+              {isParsing ? "Parsing..." : "Parse Resume"}
+            </button>
+            {importStatusMsg && (
+              <span className="save-status-msg" data-testid="resume-import-status">
+                {importStatusMsg}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Parsed Draft Review Box */}
+        {resumeDraft && (
+          <div
+            data-testid="resume-draft-review"
+            style={{
+              padding: "16px",
+              background: "var(--color-surface-hover, #f8fafc)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "8px",
+              marginTop: "12px",
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "8px" }}>
+              Review Parsed Draft (Proposal)
+            </div>
+            <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", marginBottom: "12px" }}>
+              Workit extracted the following structured data. Please verify before applying to your profile.
+            </p>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "13px", marginBottom: "12px" }}>
+              <div><strong>Name:</strong> {resumeDraft.identity.fullName || "(none detected)"}</div>
+              <div><strong>Email:</strong> {resumeDraft.identity.email || "(none detected)"}</div>
+              <div><strong>Phone:</strong> {resumeDraft.identity.phone || "(none detected)"}</div>
+              <div><strong>Location:</strong> {resumeDraft.identity.location || "(none detected)"}</div>
+              <div><strong>Experiences:</strong> {resumeDraft.experiences.length} found</div>
+              <div><strong>Education:</strong> {resumeDraft.education.length} found</div>
+            </div>
+
+            {resumeDraft.skills.length > 0 && (
+              <div style={{ marginBottom: "12px" }}>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-secondary)" }}>Detected Skills:</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+                  {resumeDraft.skills.map((s) => (
+                    <span key={s} className="skill-chip" style={{ fontSize: "12px" }}>
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+              <button
+                type="button"
+                className="btn-primary"
+                data-testid="btn-confirm-resume-draft"
+                disabled={isConfirming}
+                onClick={handleConfirmResumeDraft}
+              >
+                {isConfirming ? "Populating..." : "Confirm & Populate Profile"}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                data-testid="btn-discard-resume-draft"
+                onClick={() => setResumeDraft(null)}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* 1. Identity Card */}
       <section className="profile-card" data-testid="profile-identity-section">
         <div className="profile-card-header">
@@ -227,6 +421,7 @@ export function ProfileView() {
             <p className="profile-card-desc">Authoritative contact information used for candidate details</p>
           </div>
         </div>
+
 
         <form onSubmit={handleSaveIdentity}>
           <div className="form-grid-2">

@@ -20,6 +20,10 @@ import type {
   FindAnswerMatchRequest,
   FindAnswerMatchResponse,
   JobMatchResponse,
+  ParseResumeResponse,
+  ConfirmResumeDraftResponse,
+  ResumeDraftProfile,
+  ResumeArtifact,
 } from "@workit/contracts";
 import {
   type Opportunity,
@@ -31,7 +35,9 @@ import {
   findBestAnswerMatch,
   extractRequirements,
   matchRequirements,
+  parseResume,
 } from "@workit/domain";
+
 
 const DEFAULT_API_BASE = "http://localhost:8787";
 
@@ -839,6 +845,143 @@ export class WorkitApiClient {
     const requirements = extractRequirements(jobDescription);
     return matchRequirements(requirements, profile);
   }
+
+  // --- Resume Import (S10) ---
+
+  async parseResumeText(
+    fileName: string,
+    rawText: string,
+    mimeType = "text/plain",
+    userId = "usr_default"
+  ): Promise<ParseResumeResponse> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/resume/parse`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify({ fileName, mimeType, rawText }),
+      });
+      if (res.ok) {
+        return (await res.json()) as ParseResumeResponse;
+      }
+    } catch {
+      // Fallback to local parsing
+    }
+
+    const draft = parseResume(rawText);
+    const artifactId = `res_${Date.now()}`;
+    const artifact: ResumeArtifact = {
+      id: artifactId,
+      userId,
+      fileName,
+      mimeType,
+      fileSize: rawText.length,
+      rawText,
+      createdAt: new Date().toISOString(),
+    };
+
+    const existingResumes = await this.listLocalResumes(userId);
+    await this.saveLocalResumes([artifact, ...existingResumes], userId);
+
+    return {
+      artifactId,
+      draft,
+    };
+  }
+
+  async confirmResumeDraft(
+    draft: ResumeDraftProfile,
+    artifactId?: string,
+    userId = "usr_default"
+  ): Promise<ConfirmResumeDraftResponse> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/resume/confirm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userId,
+        },
+        body: JSON.stringify({ draft, artifactId }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as ConfirmResumeDraftResponse;
+        await this.saveLocalProfile(data.profile, userId);
+        return data;
+      }
+    } catch {
+      // Fallback to local updates
+    }
+
+    // 1. Update identity
+    if (draft.identity && Object.keys(draft.identity).length > 0) {
+      await this.updateProfileIdentity(draft.identity, userId);
+    }
+
+    // 2. Add experiences
+    for (const exp of draft.experiences) {
+      await this.addExperience(exp, userId);
+    }
+
+    // 3. Add education
+    for (const edu of draft.education) {
+      await this.addEducation(edu, userId);
+    }
+
+    // 4. Update skills
+    if (draft.skills && draft.skills.length > 0) {
+      const curr = await this.getProfile(userId);
+      const existingNames = curr.skills.map((s) => s.name);
+      const merged = Array.from(new Set([...existingNames, ...draft.skills]));
+      await this.setSkills(merged, userId);
+    }
+
+    const updatedProfile = await this.getProfile(userId);
+    return {
+      success: true,
+      profile: updatedProfile,
+    };
+  }
+
+  async listResumes(userId = "usr_default"): Promise<ResumeArtifact[]> {
+    try {
+      const res = await fetch(`${this.baseUrl}/api/resume`, {
+        headers: { "x-user-id": userId },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { resumes: ResumeArtifact[] };
+        await this.saveLocalResumes(data.resumes, userId);
+        return data.resumes;
+      }
+    } catch {
+      // Fallback
+    }
+
+    return this.listLocalResumes(userId);
+  }
+
+  private async listLocalResumes(userId = "usr_default"): Promise<ResumeArtifact[]> {
+    const key = `workit_resumes_${userId}`;
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      const res = await chrome.storage.local.get(key);
+      return (res[key] as ResumeArtifact[]) || [];
+    } else if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : [];
+    }
+    return [];
+  }
+
+  private async saveLocalResumes(resumes: ResumeArtifact[], userId = "usr_default"): Promise<void> {
+    const key = `workit_resumes_${userId}`;
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      await chrome.storage.local.set({ [key]: resumes });
+    } else if (typeof localStorage !== "undefined") {
+      localStorage.setItem(key, JSON.stringify(resumes));
+    }
+  }
 }
+
 
 export const workitApiClient = new WorkitApiClient();

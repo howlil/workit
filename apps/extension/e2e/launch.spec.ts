@@ -808,5 +808,93 @@ test.describe("S9 — Evidence Match E2E", () => {
   });
 });
 
+test.describe("S10 — Resume Import E2E", () => {
+  test("paste resume text -> parse draft proposal -> review draft -> confirm populate profile -> persists across reload", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
 
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
 
+    let [background] = context.serviceWorkers();
+    if (!background) {
+      background = await context.waitForEvent("serviceworker");
+    }
+    const extensionId = background.url().split("/")[2];
+
+    const wsPage = await context.newPage();
+    await wsPage.goto(`chrome-extension://${extensionId}/workspace.html`);
+
+    // 1. Navigate to Profile tab
+    await wsPage.click('[data-testid="nav-profile"]');
+    await expect(wsPage.locator('[data-testid="profile-view"]')).toBeVisible({ timeout: 5000 });
+
+    // 2. Paste raw resume text into import zone
+    const sampleResume = `
+Jordan Lee
+Austin, TX
+jordan.lee@example.com | (512) 555-0144
+https://linkedin.com/in/jordanlee
+
+SUMMARY
+Senior Cloud Architect with extensive experience building fault-tolerant microservices.
+
+EXPERIENCE
+Principal Engineer at CloudVenture
+Jan 2021 - Present
+• Designed distributed streaming architecture using Apache Kafka and Redis.
+• Reduced operational cloud infrastructure spend by 28%.
+
+EDUCATION
+B.S. in Computer Science - University of Texas at Austin
+2013 - 2017
+
+SKILLS
+TypeScript, Go, Kubernetes, Terraform, Docker, Kafka
+    `.trim();
+
+    const resumeInput = wsPage.locator('[data-testid="textarea-resume-text"]');
+    await expect(resumeInput).toBeVisible();
+    await resumeInput.fill(sampleResume);
+
+    // 3. Click Parse Resume
+    const parseBtn = wsPage.locator('[data-testid="btn-parse-resume"]');
+    await parseBtn.click();
+
+    // 4. Assert review modal/box proposal appears
+    const draftReview = wsPage.locator('[data-testid="resume-draft-review"]');
+    await expect(draftReview).toBeVisible({ timeout: 5000 });
+    await expect(draftReview).toContainText("Jordan Lee");
+    await expect(draftReview).toContainText("jordan.lee@example.com");
+    await expect(draftReview).toContainText("Kafka");
+
+    // 5. Click Confirm & Populate Profile
+    const confirmBtn = wsPage.locator('[data-testid="btn-confirm-resume-draft"]');
+    await confirmBtn.click();
+
+    // 6. Assert success banner and updated profile identity fields
+    await expect(wsPage.locator('[data-testid="resume-import-status"]')).toContainText(
+      "Profile successfully populated from resume! ✓"
+    );
+
+    await expect(wsPage.locator('[data-testid="input-fullname"]')).toHaveValue("Jordan Lee");
+    await expect(wsPage.locator('[data-testid="input-email"]')).toHaveValue("jordan.lee@example.com");
+    await expect(wsPage.locator('[data-testid="input-location"]')).toHaveValue("Austin, TX");
+    await expect(wsPage.locator('[data-testid="input-linkedin"]')).toHaveValue("https://linkedin.com/in/jordanlee");
+
+    // 7. Reload workspace and verify persistence
+    await wsPage.reload();
+    await wsPage.click('[data-testid="nav-profile"]');
+    await expect(wsPage.locator('[data-testid="profile-view"]')).toBeVisible({ timeout: 5000 });
+
+    await expect(wsPage.locator('[data-testid="input-fullname"]')).toHaveValue("Jordan Lee");
+    await expect(wsPage.locator('[data-testid="input-email"]')).toHaveValue("jordan.lee@example.com");
+    await expect(wsPage.locator('[data-testid="input-location"]')).toHaveValue("Austin, TX");
+
+    await context.close();
+  });
+});

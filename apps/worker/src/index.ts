@@ -4,6 +4,7 @@ import {
   D1ProfileRepository,
   D1ApplicationRepository,
   D1AnswerMemoryRepository,
+  D1ResumeRepository,
   type D1DatabaseLike,
 } from "@workit/db";
 import { OpportunityService } from "./services/opportunity.js";
@@ -11,11 +12,13 @@ import { ProfileService } from "./services/profile.js";
 import { ApplicationService } from "./services/application.js";
 import { AnswerService } from "./services/answers.js";
 import { EvidenceService } from "./services/evidence.js";
+import { ResumeService } from "./services/resume.js";
 import { createOpportunityRouter } from "./http/opportunities.js";
 import { createProfileRouter } from "./http/profile.js";
 import { createApplicationRouter } from "./http/application.js";
 import { createAnswerRouter } from "./http/answers.js";
 import { createEvidenceRouter } from "./http/evidence.js";
+import { createResumeRouter } from "./http/resume.js";
 
 type Bindings = {
   DB?: D1DatabaseLike;
@@ -66,6 +69,12 @@ export function getEvidenceService(db: D1DatabaseLike): EvidenceService {
   return new EvidenceService(profileRepo);
 }
 
+export function getResumeService(db: D1DatabaseLike): ResumeService {
+  const resumeRepo = new D1ResumeRepository(db);
+  const profileRepo = new D1ProfileRepository(db);
+  return new ResumeService(resumeRepo, profileRepo);
+}
+
 // Memory fallback database for development / tests without active D1 binding
 class MemoryD1Database implements D1DatabaseLike {
   private rows = {
@@ -80,6 +89,7 @@ class MemoryD1Database implements D1DatabaseLike {
     applicationEvents: new Map<string, any>(),
     submittedAnswers: new Map<string, any>(),
     answerMemories: new Map<string, any>(),
+    resumeArtifacts: new Map<string, any>(),
   };
 
   prepare(sql: string) {
@@ -346,6 +356,36 @@ class MemoryD1Database implements D1DatabaseLike {
       return [];
     }
 
+    // Resume Artifacts
+    if (s.startsWith("INSERT INTO resume_artifacts")) {
+      const [id, user_id, file_name, mime_type, file_size, raw_text, created_at] = bound;
+      this.rows.resumeArtifacts.set(id, { id, user_id, file_name, mime_type, file_size, raw_text, created_at });
+      return [];
+    }
+    if (s.includes("FROM resume_artifacts WHERE id = ? AND user_id = ?")) {
+      const [id, userId] = bound;
+      const res = this.rows.resumeArtifacts.get(id);
+      return res && res.user_id === userId ? [{ ...res }] : [];
+    }
+    if (s.includes("FROM resume_artifacts WHERE user_id = ?")) {
+      const [userId] = bound;
+      const results: any[] = [];
+      for (const res of this.rows.resumeArtifacts.values()) {
+        if (res.user_id === userId) results.push({ ...res });
+      }
+      results.sort((a, b) => b.created_at.localeCompare(a.created_at));
+      if (s.includes("LIMIT 1")) return results.slice(0, 1);
+      return results;
+    }
+    if (s.startsWith("DELETE FROM resume_artifacts WHERE id = ? AND user_id = ?")) {
+      const [id, userId] = bound;
+      const res = this.rows.resumeArtifacts.get(id);
+      if (res && res.user_id === userId) {
+        this.rows.resumeArtifacts.delete(id);
+      }
+      return [];
+    }
+
     return [];
   }
 }
@@ -377,10 +417,17 @@ const evidenceRouter = createEvidenceRouter((c) => {
   return getEvidenceService(db);
 });
 
+const resumeRouter = createResumeRouter((c) => {
+  const db = c.env?.DB || sharedDevDb;
+  return getResumeService(db);
+});
+
 app.route("/api/opportunities", opportunityRouter);
 app.route("/api/profile", profileRouter);
 app.route("/api/applications", applicationRouter);
 app.route("/api/answers", answerRouter);
 app.route("/api/evidence", evidenceRouter);
+app.route("/api/resume", resumeRouter);
 
 export default app;
+

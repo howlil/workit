@@ -45,5 +45,13 @@ export type {
 } from "./evidence/types.js";
 export { extractRequirements } from "./evidence/extract-requirements.js";
 export { matchRequirements } from "./evidence/match-profile.js";
+export type {
+  ResumeIdentityDraft,
+  ResumeExperienceDraft,
+  ResumeEducationDraft,
+  ResumeDraftProfile,
+  ResumeArtifact,
+} from "./resume/types.js";
+export { parseResume } from "./resume/parse-resume.js";
 
 
