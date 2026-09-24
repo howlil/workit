@@ -2,6 +2,7 @@ import { mountWorkit } from "../src/browser/mount-workit";
 import { startPageObserver } from "../src/browser/page-observer";
 import { contextController } from "../src/browser/context-controller";
 import { createCurrentPageContext, defaultJobDetector } from "../src/capture/job-detector";
+import { workitApiClient } from "../src/runtime/api-client";
 
 async function runDetection(): Promise<void> {
   try {
@@ -9,10 +10,18 @@ async function runDetection(): Promise<void> {
     const candidate = await defaultJobDetector.detect(pageContext);
     if (candidate) {
       console.log("[Workit] Job detected:", candidate.title, "@", candidate.company);
-      contextController.setBrowserContext({
-        type: "job",
-        candidate,
-      });
+      const check = await workitApiClient.checkOpportunity(candidate.source.canonicalUrl);
+      if (check.exists && check.opportunityId) {
+        contextController.setBrowserContext({
+          type: "saved-job",
+          opportunityId: check.opportunityId,
+        });
+      } else {
+        contextController.setBrowserContext({
+          type: "job",
+          candidate,
+        });
+      }
     } else {
       const current = contextController.getBrowserContext();
       if (current.type !== "saved-job") {

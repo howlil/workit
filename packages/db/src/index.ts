@@ -1,2 +1,5 @@
-// @workit/db — migrations + repositories
-// Will be populated when D1 persistence is added in S3.
+export {
+  D1OpportunityRepository,
+  type D1DatabaseLike,
+  type D1PreparedStatementLike,
+} from "./repositories/opportunity.js";

@@ -8,5 +8,6 @@ export default defineConfig({
     name: "Workit",
     description: "Job search memory and workflow system",
     permissions: ["storage"],
+    host_permissions: ["http://localhost:*/*", "http://127.0.0.1:*/*"],
   },
 });

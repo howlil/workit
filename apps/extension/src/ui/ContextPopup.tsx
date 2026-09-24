@@ -1,5 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { BrowserContext } from "../browser/context-controller";
+import { contextController } from "../browser/context-controller";
+import { workitApiClient } from "../runtime/api-client";
 
 interface ContextPopupProps {
   browserContext: BrowserContext;
@@ -7,6 +9,7 @@ interface ContextPopupProps {
 }
 
 export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
+  const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -123,22 +126,45 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
                 type="button"
                 className="workit-primary-btn"
                 data-testid="workit-save-job-btn"
+                disabled={isSaving}
+                onClick={async () => {
+                  setIsSaving(true);
+                  try {
+                    const res = await workitApiClient.saveOpportunity(browserContext.candidate);
+                    contextController.setBrowserContext({
+                      type: "saved-job",
+                      opportunityId: res.opportunityId,
+                    });
+                  } catch (err) {
+                    console.error("[Workit] Failed to save job:", err);
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
               >
-                Save job
+                {isSaving ? "Saving..." : "Save job"}
               </button>
             </div>
           </div>
         )}
 
         {browserContext.type === "saved-job" && (
-          <div>
+          <div data-testid="workit-saved-view">
             <div className="workit-context-tag is-job">
               <span className="workit-tag-dot" />
               <span>Saved ✓</span>
             </div>
             <p className="workit-empty-message">
-              This job is saved in your Workit workspace.
+              This opportunity is saved in your Workit database with an immutable snapshot.
             </p>
+            <button
+              type="button"
+              className="workit-primary-btn"
+              data-testid="workit-applying-btn"
+              style={{ marginTop: 16 }}
+            >
+              I'm applying
+            </button>
           </div>
         )}
       </div>

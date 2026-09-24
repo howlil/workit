@@ -252,3 +252,59 @@ test.describe("S2 — Job Detection E2E", () => {
     await context.close();
   });
 });
+
+test.describe("S3 — Capture + Persist Opportunity E2E", () => {
+  test("golden path: open job -> save job -> transitions to saved -> reload -> recognized as Saved", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${serverPort}/jobs/json-ld-complete.html`);
+
+    const workitHost = page.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    // Open popup
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    // 1. Verify "Save job" button is visible and click it
+    const saveBtn = workitHost.locator('[data-testid="workit-save-job-btn"]');
+    await expect(saveBtn).toBeVisible();
+    await saveBtn.click();
+
+    // 2. Verify popup transitions to "Saved ✓" and displays "I'm applying" button
+    const savedView = workitHost.locator('[data-testid="workit-saved-view"]');
+    await expect(savedView).toBeVisible({ timeout: 5000 });
+    await expect(savedView).toContainText("Saved ✓");
+
+    const applyingBtn = workitHost.locator('[data-testid="workit-applying-btn"]');
+    await expect(applyingBtn).toBeVisible();
+    await expect(applyingBtn).toHaveText("I'm applying");
+
+    // 3. Reload the page (simulating user revisiting this job opportunity)
+    await page.reload();
+
+    const reloadedHost = page.locator("#workit-root");
+    await expect(reloadedHost).toBeAttached({ timeout: 5000 });
+
+    // 4. Open launcher again
+    const reloadedLauncher = reloadedHost.locator('[data-testid="workit-launcher"]');
+    await reloadedLauncher.click();
+
+    // 5. Popup immediately recognizes the saved job!
+    const reloadedSavedView = reloadedHost.locator('[data-testid="workit-saved-view"]');
+    await expect(reloadedSavedView).toBeVisible({ timeout: 5000 });
+    await expect(reloadedSavedView).toContainText("Saved ✓");
+    await expect(reloadedHost.locator('[data-testid="workit-applying-btn"]')).toBeVisible();
+
+    await context.close();
+  });
+});

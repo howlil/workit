@@ -93,6 +93,10 @@ importers:
         version: 4.138.0(@cloudflare/workers-types@5.20260924.1)(@types/node@26.6.2)
 
   packages/contracts:
+    dependencies:
+      '@workit/domain':
+        specifier: workspace:*
+        version: link:../domain
     devDependencies:
       typescript:
         specifier: 'catalog:'
