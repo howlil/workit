@@ -4,8 +4,9 @@ import { classifyField } from "../classify/classify-field";
 
 export function scanFormFields(root: Document | HTMLElement = document): DetectedField[] {
   const elements = root.querySelectorAll<HTMLElement>(
-    'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea'
+    'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]), textarea'
   );
+
 
   const detected: DetectedField[] = [];
   let index = 0;

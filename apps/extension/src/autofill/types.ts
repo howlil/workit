@@ -9,6 +9,7 @@ export type SemanticFieldType =
   | "portfolio"
   | "github"
   | "summary"
+  | "resume"
   | "unknown";
 
 export type FieldConfidenceState = "ready" | "needs_review" | "unsupported";
@@ -37,9 +38,11 @@ export interface DetectedField {
 export interface FieldFillPlanItem {
   field: DetectedField;
   resolvedValue: string;
+  resolvedFile?: { fileName: string; content: string; mimeType: string } | File;
   approved: boolean;
   status: "pending" | "filled" | "verification_failed" | "skipped";
 }
+
 
 export interface AutofillPlan {
   items: FieldFillPlanItem[];

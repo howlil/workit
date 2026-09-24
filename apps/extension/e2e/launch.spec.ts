@@ -898,3 +898,62 @@ TypeScript, Go, Kubernetes, Terraform, Docker, Kafka
     await context.close();
   });
 });
+
+test.describe("S11 — Resume Autofill E2E", () => {
+  test("application form with resume file input -> detects resume field -> autofills file via DataTransfer -> verified in DOM", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    // 1. Open application form with resume file upload input
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${serverPort}/forms/application-form.html`);
+
+    const workitHost = page.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    // 2. Open Workit Popup
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    const popup = workitHost.locator('[data-testid="workit-popup"]');
+    await expect(popup).toBeVisible({ timeout: 5000 });
+
+    // 3. Verify Autofill Assistant displays resume item in plan
+    const autofillSection = workitHost.locator('[data-testid="workit-autofill-section"]');
+    await expect(autofillSection).toBeVisible({ timeout: 5000 });
+
+    const resumePlanItem = workitHost.locator('[data-testid="autofill-item-resume"]');
+    await expect(resumePlanItem).toBeVisible({ timeout: 5000 });
+    await expect(resumePlanItem).toContainText("Resume.txt");
+
+    // 4. Click "Auto-fill Application"
+    const autofillBtn = workitHost.locator('[data-testid="workit-autofill-btn"]');
+    await autofillBtn.click();
+
+    // 5. Verify success banner in Workit popup
+    const successMsg = workitHost.locator('[data-testid="autofill-success-msg"]');
+    await expect(successMsg).toBeVisible({ timeout: 5000 });
+    await expect(successMsg).toContainText("filled & verified ✓");
+
+    // 6. Verify file input in host page DOM received file via DataTransfer
+    const fileAttached = await page.evaluate(() => {
+      const el = document.getElementById("applicant-resume") as HTMLInputElement | null;
+      return Boolean(el && el.files && el.files.length > 0 && el.files[0]?.name.endsWith(".txt"));
+    });
+    expect(fileAttached).toBe(true);
+
+    const resumeInfo = page.locator("#resume-file-info");
+    await expect(resumeInfo).toContainText("Selected:");
+    await expect(resumeInfo).toContainText("Resume.txt");
+
+    await context.close();
+  });
+});
+

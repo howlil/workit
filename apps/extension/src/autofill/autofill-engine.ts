@@ -1,8 +1,9 @@
 import type { FullCareerProfile } from "@workit/contracts";
 import type { AutofillPlan, FieldFillPlanItem } from "./types";
 import { scanFormFields } from "./detect/scan-form";
-import { resolveProfileValue } from "./resolve/profile-value-resolver";
+import { resolveProfileValue, generateResumeDocument } from "./resolve/profile-value-resolver";
 import { writeTextInput } from "./write/text-input-writer";
+import { writeFileInput } from "./write/file-input-writer";
 import { verifyFieldValue } from "./verify/verify-field";
 
 export class AutofillEngine {
@@ -19,12 +20,22 @@ export class AutofillEngine {
       // Only propose fields for which the profile has a value
       if (resolvedValue && resolvedValue.trim().length > 0) {
         const approved = field.state === "ready";
-        items.push({
+        const item: FieldFillPlanItem = {
           field,
           resolvedValue,
           approved,
           status: "pending",
-        });
+        };
+
+        if (field.semanticType === "resume") {
+          item.resolvedFile = {
+            fileName: resolvedValue,
+            content: generateResumeDocument(profile),
+            mimeType: "text/plain",
+          };
+        }
+
+        items.push(item);
       }
     }
 
@@ -47,7 +58,24 @@ export class AutofillEngine {
 
     for (const item of itemsToFill) {
       const el = item.field.element;
-      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+
+      if (el instanceof HTMLInputElement && el.type === "file") {
+        const fileData = item.resolvedFile || {
+          fileName: item.resolvedValue,
+          content: "Resume Content",
+          mimeType: "text/plain",
+        };
+        writeFileInput(el, fileData);
+        const verified = await verifyFieldValue(el, item.resolvedValue);
+
+        if (verified) {
+          item.status = "filled";
+          filled++;
+        } else {
+          item.status = "verification_failed";
+          failed++;
+        }
+      } else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
         writeTextInput(el, item.resolvedValue);
         const verified = await verifyFieldValue(el, item.resolvedValue);
 
@@ -63,6 +91,7 @@ export class AutofillEngine {
         failed++;
       }
     }
+
 
     return {
       total: itemsToFill.length,

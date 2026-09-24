@@ -199,6 +199,19 @@
         ></textarea>
       </div>
 
+      <!-- 7c. Resume / CV File Upload Input -->
+      <div class="form-group" id="group-resume-upload">
+        <label for="applicant-resume">Resume / CV Document *</label>
+        <input
+          id="applicant-resume"
+          name="resume"
+          type="file"
+          accept=".pdf,.doc,.docx,.txt"
+          required
+        />
+        <div id="resume-file-info" class="controlled-value-display">No file selected</div>
+      </div>
+
       <!-- 8. Select dropdown -->
       <div class="form-group">
         <label for="work-authorization">Work Authorization</label>
@@ -235,6 +248,17 @@
       internalState = e.target.value;
       syncDisplay.textContent = "State: " + internalState;
     });
+
+    // File input sync
+    const resumeInput = document.getElementById("applicant-resume");
+    const resumeInfo = document.getElementById("resume-file-info");
+    resumeInput.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        resumeInfo.textContent = "Selected: " + e.target.files[0].name;
+      }
+    });
+  </script>
+
   </script>
 </body>
 </html>

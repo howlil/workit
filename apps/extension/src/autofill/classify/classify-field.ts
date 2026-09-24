@@ -10,11 +10,10 @@ export function classifyField(signals: FieldSignals): {
   confidence: number;
   state: FieldConfidenceState;
 } {
-  // If hidden, password, or file input, unsupported
+  // If hidden, password, submit, button, unsupported
   if (
     signals.type === "hidden" ||
     signals.type === "password" ||
-    signals.type === "file" ||
     signals.type === "submit" ||
     signals.type === "button"
   ) {
@@ -25,13 +24,30 @@ export function classifyField(signals: FieldSignals): {
     };
   }
 
-  const scores: TypeScore[] = [];
-
   // Helper matching tests
   const textMatches = (...keywords: string[]): boolean => {
-    const haystack = `${signals.labelText} ${signals.name} ${signals.id} ${signals.ariaLabel} ${signals.placeholder}`;
-    return keywords.some((k) => haystack.includes(k));
+    const haystack = `${signals.labelText} ${signals.name} ${signals.id} ${signals.ariaLabel} ${signals.placeholder}`.toLowerCase();
+    return keywords.some((k) => haystack.includes(k.toLowerCase()));
   };
+
+  // Special handling for file inputs (Resume / CV)
+  if (signals.type === "file") {
+    if (textMatches("resume", "cv", "curriculum", "curriculum vitae", "attach", "upload")) {
+      return {
+        semanticType: "resume",
+        confidence: 0.95,
+        state: "ready",
+      };
+    }
+    return {
+      semanticType: "unknown",
+      confidence: 0,
+      state: "unsupported",
+    };
+  }
+
+  const scores: TypeScore[] = [];
+
 
   // 1. Email
   let emailScore = 0;
