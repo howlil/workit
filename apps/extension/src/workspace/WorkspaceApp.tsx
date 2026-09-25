@@ -93,74 +93,87 @@ export function WorkspaceApp() {
         activeCount={opportunities.length}
         currentView={currentView}
         onSelectView={setCurrentView}
-        onOpenSearch={() => setIsSearchOpen(true)}
       />
 
 
       <main className="workspace-main">
-        {currentView === "jobs" ? (
-          <>
-            <header className="workspace-header">
-              <div className="workspace-title-row">
-                <h1 className="workspace-title">Opportunities</h1>
-              </div>
+        <header className="workspace-header">
+          <div className="workspace-title-row">
+            <h1 className="workspace-title">
+              {currentView === "jobs"
+                ? "Opportunities"
+                : currentView === "profile"
+                ? "Career Profile"
+                : "Answer Memory"}
+            </h1>
+            <button
+              type="button"
+              className="workspace-search-trigger"
+              onClick={() => setIsSearchOpen(true)}
+              title="Search workspace (⌘K)"
+              aria-label="Search workspace"
+              data-testid="topbar-search-trigger"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              <span>Search workspace...</span>
+              <kbd className="workspace-search-shortcut">⌘K</kbd>
+            </button>
+          </div>
 
-              <div className="filter-chips">
-                {FILTER_TABS.map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    className={`filter-chip ${activeFilter === tab.id ? "is-active" : ""}`}
-                    onClick={() => setActiveFilter(tab.id)}
-                    data-testid={`filter-${tab.id}`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </header>
-
-            <div className="workspace-split-content">
-              {isLoading ? (
-                <div className="empty-state-view" data-testid="workspace-loading">
-                  Loading opportunities...
-                </div>
-              ) : (
-                <JobsTable
-                  opportunities={opportunities}
-                  selectedId={selectedItem?.opportunity.id || null}
-                  onSelect={handleSelect}
-                />
-              )}
-
-              {selectedItem && (
-                <SelectedJobPreview
-                  item={selectedItem}
-                  onClose={() => setSelectedItem(null)}
-                />
-              )}
+          {currentView === "jobs" && (
+            <div className="filter-chips">
+              {FILTER_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`filter-chip ${activeFilter === tab.id ? "is-active" : ""}`}
+                  onClick={() => setActiveFilter(tab.id)}
+                  data-testid={`filter-${tab.id}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-          </>
+          )}
+        </header>
+
+        {currentView === "jobs" ? (
+          <div className="workspace-split-content">
+            {isLoading ? (
+              <div className="empty-state-view" data-testid="workspace-loading">
+                Loading opportunities...
+              </div>
+            ) : (
+              <JobsTable
+                opportunities={opportunities}
+                selectedId={selectedItem?.opportunity.id || null}
+                onSelect={handleSelect}
+              />
+            )}
+
+            {selectedItem && (
+              <SelectedJobPreview
+                item={selectedItem}
+                onClose={() => setSelectedItem(null)}
+              />
+            )}
+          </div>
         ) : currentView === "profile" ? (
-          <>
-            <header className="workspace-header">
-              <div className="workspace-title-row">
-                <h1 className="workspace-title">Career Profile</h1>
-              </div>
-            </header>
-
-            <ProfileView />
-          </>
+          <ProfileView />
         ) : (
-          <>
-            <header className="workspace-header">
-              <div className="workspace-title-row">
-                <h1 className="workspace-title">Answer Memory</h1>
-              </div>
-            </header>
-
-            <AnswersView />
-          </>
+          <AnswersView />
         )}
       </main>
 

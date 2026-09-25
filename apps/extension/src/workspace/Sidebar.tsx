@@ -1,17 +1,18 @@
+import { BrandLogo } from "../ui/BrandLogo";
+
 export type WorkspaceView = "jobs" | "profile" | "answers";
 
 interface SidebarProps {
   activeCount: number;
   currentView: WorkspaceView;
   onSelectView: (view: WorkspaceView) => void;
-  onOpenSearch?: () => void;
 }
 
-export function Sidebar({ activeCount, currentView, onSelectView, onOpenSearch }: SidebarProps) {
+export function Sidebar({ activeCount, currentView, onSelectView }: SidebarProps) {
   return (
     <aside className="workspace-sidebar" data-testid="workspace-sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-logo">W</div>
+        <BrandLogo size={28} className="sidebar-logo" alt="Workit Logo" />
         <span className="sidebar-title">Workit</span>
       </div>
 
@@ -20,6 +21,12 @@ export function Sidebar({ activeCount, currentView, onSelectView, onOpenSearch }
           className={`nav-item ${currentView === "jobs" ? "is-active" : ""}`}
           data-testid="nav-jobs"
           onClick={() => onSelectView("jobs")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelectView("jobs");
+            }
+          }}
           role="button"
           tabIndex={0}
         >
@@ -44,6 +51,12 @@ export function Sidebar({ activeCount, currentView, onSelectView, onOpenSearch }
           className={`nav-item ${currentView === "profile" ? "is-active" : ""}`}
           data-testid="nav-profile"
           onClick={() => onSelectView("profile")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelectView("profile");
+            }
+          }}
           role="button"
           tabIndex={0}
         >
@@ -67,6 +80,12 @@ export function Sidebar({ activeCount, currentView, onSelectView, onOpenSearch }
           className={`nav-item ${currentView === "answers" ? "is-active" : ""}`}
           data-testid="nav-answers"
           onClick={() => onSelectView("answers")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelectView("answers");
+            }
+          }}
           role="button"
           tabIndex={0}
         >
@@ -83,31 +102,6 @@ export function Sidebar({ activeCount, currentView, onSelectView, onOpenSearch }
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
           <span>Answers</span>
-        </div>
-
-        <div
-          className="nav-item"
-          title="Global Search (⌘K)"
-          data-testid="nav-search"
-          onClick={onOpenSearch}
-          role="button"
-          tabIndex={0}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-          <span>Search</span>
-          <span className="nav-item-badge">⌘K</span>
         </div>
       </nav>
     </aside>

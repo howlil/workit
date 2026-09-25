@@ -1,4 +1,5 @@
 import type { BrowserContext, OverlayState } from "../browser/context-controller";
+import { BrandLogo } from "./BrandLogo";
 
 interface FloatingLauncherProps {
   overlayState: OverlayState;
@@ -23,7 +24,7 @@ export function FloatingLauncher({
       aria-expanded={isOpen}
       data-testid="workit-launcher"
     >
-      <span className="workit-launcher-mark">W</span>
+      <BrandLogo size={24} className="workit-launcher-mark" alt="Workit" />
       {hasJobContext && (
         <span
           className="workit-indicator-dot"

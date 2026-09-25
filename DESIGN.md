@@ -145,15 +145,27 @@ Rules:
 
 ```text
 4px   micro
-6px   related metadata
-8px   compact content
+6px   related metadata / tight control
+8px   compact content / element gap
+10px  dense layout rhythm
 12px  standard component padding
-16px  group separation
-24px  section separation
-32px  major layout separation
+14px  compact card padding
+16px  baseline layout / container padding
 ```
 
 Compact does not mean cramped.
+
+### Layout Grid & Density Standards (16px Baseline Rhythm)
+
+All workspace surfaces share a unified horizontal baseline rhythm:
+
+- **Shell horizontal baseline:** `16px` (flushed across Topbar Header, Table first column, and Document containers).
+- **Topbar Header:** `padding: 10px 16px` (slim, persistent header with view title and right-aligned global search trigger).
+- **Jobs Table:** Header `th` and cells `td` use `padding: 7px 12px`, with first column (`th:first-child`, `td:first-child`) and last column having `16px` outer padding.
+- **Document Containers (`.profile-container`):** `padding: 16px 16px 40px; max-width: 860px; margin: 0;` (aligns left boundary directly with the 16px topbar grid).
+- **Cards (`.profile-card`):** `padding: 14px 16px; margin-bottom: 12px; border-radius: var(--radius-control);`.
+- **Sidebar:** `190px` width, `10px 14px` header, `8px` nav padding with `6px 10px` nav items.
+- **Preview Drawer (`.preview-pane`):** `380px` width, `16px` padding.
 
 ---
 
@@ -288,7 +300,7 @@ Do not use large saturated status surfaces.
 
 ---
 
-## 10. Tables
+## 10. Tables & Workspace Shell
 
 Jobs Workspace uses a continuous table surface.
 
@@ -299,7 +311,7 @@ one surface
 +
 precise row dividers
 +
-compact cells
+compact cells (7px 12px)
 ```
 
 Do not render every job as a floating card.
@@ -311,6 +323,12 @@ soft-green background
 +
 2px green left indicator
 ```
+
+### Global Search Placement
+
+Global Search (⌘K Command Palette) is a global modal action, not a page view:
+- Placed in the **Topbar Header** (`.workspace-header`) on the right side as a persistent `.workspace-search-trigger`.
+- The Sidebar `<nav>` is strictly reserved for page view navigation (`Jobs`, `Profile`, `Answers`). It must never contain modal dialog triggers or actions.
 
 ---
 

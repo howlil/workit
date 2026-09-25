@@ -305,7 +305,7 @@ export function ProfileView() {
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
           <div>
             <label className="form-label" htmlFor="input-resume-file">Upload Resume File (.txt, .md)</label>
             <input
@@ -314,7 +314,7 @@ export function ProfileView() {
               type="file"
               accept=".txt,.md,.text"
               onChange={handleFileChange}
-              style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}
+              style={{ fontSize: "12px", color: "var(--text-muted)" }}
             />
           </div>
 
@@ -324,14 +324,14 @@ export function ProfileView() {
               id="textarea-resume-text"
               data-testid="textarea-resume-text"
               className="form-input"
-              rows={4}
+              rows={3}
               placeholder="Paste raw resume text here..."
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
             />
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <button
               type="button"
               className="btn-primary"
@@ -354,21 +354,21 @@ export function ProfileView() {
           <div
             data-testid="resume-draft-review"
             style={{
-              padding: "16px",
-              background: "var(--color-surface-hover, #f8fafc)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "8px",
-              marginTop: "12px",
+              padding: "10px 14px",
+              background: "var(--hover)",
+              border: "1px solid var(--line)",
+              borderRadius: "var(--radius-control)",
+              marginTop: "10px",
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "8px" }}>
+            <div style={{ fontWeight: 600, fontSize: "13px", marginBottom: "6px" }}>
               Review Parsed Draft (Proposal)
             </div>
-            <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", marginBottom: "12px" }}>
+            <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "10px" }}>
               Workit extracted the following structured data. Please verify before applying to your profile.
             </p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "13px", marginBottom: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "12px", marginBottom: "10px" }}>
               <div><strong>Name:</strong> {resumeDraft.identity.fullName || "(none detected)"}</div>
               <div><strong>Email:</strong> {resumeDraft.identity.email || "(none detected)"}</div>
               <div><strong>Phone:</strong> {resumeDraft.identity.phone || "(none detected)"}</div>
@@ -379,7 +379,7 @@ export function ProfileView() {
 
             {resumeDraft.skills.length > 0 && (
               <div style={{ marginBottom: "12px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-secondary)" }}>Detected Skills:</span>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted)" }}>Detected Skills:</span>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
                   {resumeDraft.skills.map((s) => (
                     <span key={s} className="skill-chip" style={{ fontSize: "12px" }}>

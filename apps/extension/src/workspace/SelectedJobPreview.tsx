@@ -55,22 +55,27 @@ export function SelectedJobPreview({ item, onClose }: SelectedJobPreviewProps) {
         <button
           type="button"
           onClick={onClose}
-          style={{
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            color: "var(--text-muted)",
-            fontSize: 18,
-            padding: 4,
-          }}
+          className="btn-quiet"
           aria-label="Close preview"
           data-testid="close-preview-btn"
         >
-          ×
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="3" y1="3" x2="11" y2="11" />
+            <line x1="11" y1="3" x2="3" y2="11" />
+          </svg>
         </button>
       </div>
 
-      <div className="preview-header" style={{ marginTop: 12 }}>
+      <div className="preview-header" style={{ marginTop: 8 }}>
         <h2 className="preview-title" data-testid="preview-title">{opportunity.title}</h2>
         <div className="preview-company" data-testid="preview-company">{opportunity.company}</div>
         {opportunity.location && (
@@ -131,34 +136,22 @@ export function SelectedJobPreview({ item, onClose }: SelectedJobPreviewProps) {
         {isLoadingMatch ? (
           <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Analyzing requirements against profile...</div>
         ) : matchAnalysis && matchAnalysis.matches.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
               {matchAnalysis.matchedCount} matched • {matchAnalysis.partialCount} partial • {matchAnalysis.missingCount} missing
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }} data-testid="match-breakdown-list">
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }} data-testid="match-breakdown-list">
               {matchAnalysis.matches.map((m, idx) => (
                 <div
                   key={idx}
-                  style={{
-                    background: "#f9fafb",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 6,
-                    padding: "8px 12px",
-                    fontSize: 13,
-                  }}
+                  className="match-item-box"
                   data-testid={`match-item-${m.status}`}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                    <span style={{ fontWeight: 500, color: "#111" }}>{m.requirement}</span>
+                    <span style={{ fontWeight: 500, color: "var(--text)" }}>{m.requirement}</span>
                     <span
-                      className={`filter-chip ${m.status === "matched" ? "is-active" : ""}`}
-                      style={{
-                        fontSize: 11,
-                        padding: "2px 8px",
-                        background: m.status === "matched" ? "#E8F5E9" : m.status === "partial" ? "#FFF8E1" : "#F3F4F6",
-                        color: m.status === "matched" ? "#2E7D32" : m.status === "partial" ? "#B45309" : "#6B7280",
-                      }}
+                      className={`match-status-badge ${m.status}`}
                       data-testid={`status-badge-${m.status}`}
                     >
                       {m.status === "matched" ? "✓ Matched" : m.status === "partial" ? "~ Partial" : "✗ Missing"}
@@ -166,31 +159,24 @@ export function SelectedJobPreview({ item, onClose }: SelectedJobPreviewProps) {
                   </div>
 
                   {m.evidenceSummary && (
-                    <div style={{ marginTop: 4, fontSize: 12, color: "#4b5563" }} data-testid="evidence-summary">
+                    <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }} data-testid="evidence-summary">
                       {m.status !== "missing" ? (
                         <span>
-                          <strong style={{ color: "#374151" }}>Evidence: </strong>
+                          <strong style={{ color: "var(--text)" }}>Evidence: </strong>
                           {m.evidenceSummary}
                         </span>
                       ) : (
-                        <span style={{ color: "#9ca3af" }}>{m.evidenceSummary}</span>
+                        <span style={{ color: "var(--text-faint)" }}>{m.evidenceSummary}</span>
                       )}
                     </div>
                   )}
 
                   {m.evidenceFactIds.length > 0 && (
-                    <div style={{ marginTop: 4, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    <div style={{ marginTop: 4, display: "flex", gap: 3, flexWrap: "wrap" }}>
                       {m.evidenceFactIds.map((factId) => (
                         <span
                           key={factId}
-                          style={{
-                            fontSize: 10,
-                            background: "#e5e7eb",
-                            color: "#374151",
-                            padding: "1px 6px",
-                            borderRadius: 4,
-                            fontFamily: "monospace",
-                          }}
+                          className="fact-id-chip"
                           data-testid="evidence-fact-id"
                         >
                           {factId}

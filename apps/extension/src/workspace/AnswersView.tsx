@@ -69,18 +69,15 @@ export function AnswersView() {
   });
 
   return (
-    <div className="workspace-profile-container" data-testid="answers-view">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>Answer Memory</h2>
-          <p style={{ fontSize: 13, color: "#666", marginTop: 4 }}>
-            Store and manage reusable answers for employer questions. Workit will automatically suggest them during autofill.
-          </p>
-        </div>
+    <div className="profile-container" data-testid="answers-view">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, maxWidth: 540 }}>
+          Store and manage reusable answers for employer questions. Workit will automatically suggest them during autofill.
+        </p>
         <button
           type="button"
-          className="workit-primary-btn"
-          style={{ width: "auto", padding: "8px 16px" }}
+          className="btn-primary"
+          style={{ width: "auto" }}
           data-testid="btn-add-answer"
           onClick={() => setIsAdding(!isAdding)}
         >
@@ -91,12 +88,13 @@ export function AnswersView() {
       {saveSuccessMsg && (
         <div
           style={{
-            background: "#E8F5E9",
-            color: "#2E7D32",
-            padding: "8px 12px",
-            borderRadius: 6,
-            marginBottom: 16,
-            fontSize: 13,
+            background: "var(--green-soft)",
+            color: "var(--green)",
+            border: "1px solid var(--green-line)",
+            padding: "6px 10px",
+            borderRadius: "var(--radius-chip)",
+            marginBottom: 12,
+            fontSize: 12,
             fontWeight: 500,
           }}
           data-testid="answer-save-success"
@@ -108,28 +106,17 @@ export function AnswersView() {
       {isAdding && (
         <form
           onSubmit={handleSaveAnswer}
-          style={{
-            background: "#f9fafb",
-            border: "1px solid #e5e7eb",
-            borderRadius: 8,
-            padding: 16,
-            marginBottom: 24,
-          }}
+          className="profile-card"
           data-testid="add-answer-form"
         >
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="input-new-question">
               Question / Prompt *
             </label>
             <input
+              id="input-new-question"
               type="text"
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                border: "1px solid #ccc",
-                borderRadius: 6,
-                fontSize: 13,
-              }}
+              className="form-input"
               placeholder="e.g. Why do you want to work at our company?"
               value={newQuestion}
               onChange={(e) => setNewQuestion(e.target.value)}
@@ -138,20 +125,14 @@ export function AnswersView() {
             />
           </div>
 
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="input-new-answer">
               Answer Text *
             </label>
             <textarea
+              id="input-new-answer"
               rows={4}
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                border: "1px solid #ccc",
-                borderRadius: 6,
-                fontSize: 13,
-                fontFamily: "inherit",
-              }}
+              className="form-input"
               placeholder="Write your reusable answer here..."
               value={newAnswer}
               onChange={(e) => setNewAnswer(e.target.value)}
@@ -160,40 +141,32 @@ export function AnswersView() {
             />
           </div>
 
-          <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-                Category
-              </label>
-              <input
-                type="text"
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  border: "1px solid #ccc",
-                  borderRadius: 6,
-                  fontSize: 13,
-                }}
-                placeholder="motivation, leadership, technical..."
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                data-testid="input-new-category"
-              />
-            </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="input-new-category">
+              Category
+            </label>
+            <input
+              id="input-new-category"
+              type="text"
+              className="form-input"
+              placeholder="motivation, leadership, technical..."
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              data-testid="input-new-category"
+            />
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <button
               type="button"
-              className="action-btn"
+              className="btn-secondary"
               onClick={() => setIsAdding(false)}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="workit-primary-btn"
-              style={{ width: "auto", padding: "8px 16px" }}
+              className="btn-primary"
               data-testid="btn-save-answer-submit"
             >
               Save Answer
@@ -202,62 +175,46 @@ export function AnswersView() {
         </form>
       )}
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 12 }}>
         <input
           type="text"
+          className="form-input"
           placeholder="Search answers by question or keywords..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            width: "100%",
-            maxWidth: 400,
-            padding: "8px 12px",
-            border: "1px solid #e5e7eb",
-            borderRadius: 6,
-            fontSize: 13,
-          }}
+          style={{ maxWidth: 400 }}
           data-testid="input-search-answers"
         />
       </div>
 
       {isLoading ? (
-        <div style={{ padding: 32, textAlign: "center", color: "#666" }}>
+        <div style={{ padding: 24, textAlign: "center", color: "var(--text-muted)" }}>
           Loading answers...
         </div>
       ) : filteredAnswers.length === 0 ? (
         <div
-          style={{
-            padding: 40,
-            textAlign: "center",
-            background: "#fff",
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-          }}
+          className="profile-card"
+          style={{ textAlign: "center", padding: "24px" }}
           data-testid="answers-empty-state"
         >
-          <p style={{ margin: 0, fontWeight: 500, color: "#444" }}>No answers saved yet</p>
-          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#888" }}>
+          <p style={{ margin: 0, fontWeight: 500, color: "var(--text)" }}>No answers saved yet</p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-faint)" }}>
             Add answers to common application questions to enable 1-click suggestions.
           </p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {filteredAnswers.map((item) => (
             <div
               key={item.id}
-              style={{
-                background: "#fff",
-                border: "1px solid #e5e7eb",
-                borderRadius: 8,
-                padding: 16,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
-              }}
+              className="profile-card"
+              style={{ marginBottom: 0, padding: "10px 14px" }}
               data-testid={`answer-card-${item.id}`}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                 <div>
                   <h3
-                    style={{ fontSize: 14, fontWeight: 600, color: "#111", margin: 0 }}
+                    style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", margin: 0 }}
                     data-testid={`answer-question-${item.id}`}
                   >
                     {item.questionText}
@@ -265,20 +222,20 @@ export function AnswersView() {
                   {item.category && (
                     <span
                       className="workit-chip"
-                      style={{ fontSize: 11, marginTop: 4, display: "inline-block" }}
+                      style={{ fontSize: 10, marginTop: 2, padding: "1px 5px", display: "inline-block" }}
                     >
                       {item.category}
                     </span>
                   )}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 12, color: "#888" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
                     Used {item.usageCount} {item.usageCount === 1 ? "time" : "times"}
                   </span>
                   <button
                     type="button"
                     className="action-btn"
-                    style={{ color: "#DC2626", padding: "4px 8px", fontSize: 12 }}
+                    style={{ color: "var(--danger)", padding: "2px 6px", fontSize: 11 }}
                     data-testid={`btn-delete-answer-${item.id}`}
                     onClick={() => handleDeleteAnswer(item.id)}
                   >
@@ -288,10 +245,10 @@ export function AnswersView() {
               </div>
               <p
                 style={{
-                  fontSize: 13,
-                  color: "#4b5563",
+                  fontSize: 12,
+                  color: "var(--text)",
                   margin: 0,
-                  lineHeight: 1.5,
+                  lineHeight: 1.4,
                   whiteSpace: "pre-wrap",
                 }}
                 data-testid={`answer-text-${item.id}`}

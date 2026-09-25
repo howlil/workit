@@ -123,7 +123,7 @@ export function GlobalSearchModal({
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor: "rgba(15, 23, 42, 0.45)",
+        backgroundColor: "rgba(0, 0, 0, 0.4)",
         backdropFilter: "blur(2px)",
         zIndex: 9999,
         display: "flex",
@@ -137,10 +137,10 @@ export function GlobalSearchModal({
         style={{
           width: "100%",
           maxWidth: "620px",
-          background: "#ffffff",
-          borderRadius: "12px",
-          boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-          border: "1px solid var(--color-border, #e2e8f0)",
+          background: "var(--white)",
+          borderRadius: "var(--radius-popup)",
+          boxShadow: "0 12px 36px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)",
+          border: "1px solid var(--line-strong)",
           overflow: "hidden",
         }}
       >
@@ -150,7 +150,7 @@ export function GlobalSearchModal({
             display: "flex",
             alignItems: "center",
             padding: "14px 16px",
-            borderBottom: "1px solid var(--color-border, #e2e8f0)",
+            borderBottom: "1px solid var(--line)",
             gap: "10px",
           }}
         >
@@ -163,7 +163,7 @@ export function GlobalSearchModal({
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            style={{ color: "#64748b" }}
+            style={{ color: "var(--text-muted)" }}
           >
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.3-4.3" />
@@ -181,19 +181,20 @@ export function GlobalSearchModal({
               border: "none",
               outline: "none",
               width: "100%",
-              fontSize: "15px",
+              fontSize: "14px",
               padding: "0",
               boxShadow: "none",
+              color: "var(--text)",
             }}
           />
           <kbd
             style={{
               fontSize: "11px",
               padding: "2px 6px",
-              borderRadius: "4px",
-              background: "#f1f5f9",
-              color: "#64748b",
-              border: "1px solid #cbd5e1",
+              borderRadius: "var(--radius-chip)",
+              background: "var(--hover)",
+              color: "var(--text-muted)",
+              border: "1px solid var(--line)",
             }}
           >
             ESC
@@ -205,16 +206,17 @@ export function GlobalSearchModal({
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
+            gap: "6px",
             padding: "8px 16px",
-            borderBottom: "1px solid var(--color-border, #e2e8f0)",
-            background: "#f8fafc",
+            borderBottom: "1px solid var(--line)",
+            background: "var(--hover)",
           }}
         >
           {FILTER_SCOPES.map((scope) => (
             <button
               key={scope.id}
               type="button"
+              className={`filter-chip ${activeScope === scope.id ? "is-active" : ""}`}
               data-testid={`search-filter-${scope.id}`}
               onClick={() => {
                 setActiveScope(scope.id);
@@ -222,20 +224,15 @@ export function GlobalSearchModal({
               }}
               style={{
                 fontSize: "12px",
-                fontWeight: 500,
                 padding: "3px 10px",
-                borderRadius: "14px",
-                border: "none",
                 cursor: "pointer",
-                background: activeScope === scope.id ? "#2F7D44" : "transparent",
-                color: activeScope === scope.id ? "#ffffff" : "#64748b",
               }}
             >
               {scope.label}
             </button>
           ))}
           {isLoading && (
-            <span style={{ fontSize: "11px", color: "#94a3b8", marginLeft: "auto" }}>
+            <span style={{ fontSize: "11px", color: "var(--text-faint)", marginLeft: "auto" }}>
               Searching...
             </span>
           )}
@@ -256,7 +253,7 @@ export function GlobalSearchModal({
               style={{
                 padding: "32px 16px",
                 textAlign: "center",
-                color: "#64748b",
+                color: "var(--text-muted)",
                 fontSize: "14px",
               }}
             >
@@ -269,7 +266,7 @@ export function GlobalSearchModal({
               style={{
                 padding: "32px 16px",
                 textAlign: "center",
-                color: "#94a3b8",
+                color: "var(--text-faint)",
                 fontSize: "13px",
               }}
             >
@@ -295,29 +292,20 @@ export function GlobalSearchModal({
                   display: "flex",
                   alignItems: "flex-start",
                   gap: "12px",
-                  background: isSelected ? "var(--color-surface-hover, #f1f5f9)" : "transparent",
-                  borderLeft: isSelected ? "3px solid #2F7D44" : "3px solid transparent",
+                  background: isSelected ? "var(--green-soft)" : "transparent",
+                  boxShadow: isSelected ? "inset 2px 0 0 var(--green)" : "none",
                 }}
               >
                 <span
                   style={{
                     fontSize: "10px",
-                    fontWeight: 700,
+                    fontWeight: 600,
                     textTransform: "uppercase",
                     padding: "2px 6px",
-                    borderRadius: "4px",
-                    background:
-                      item.type === "opportunity"
-                        ? "#dcfce7"
-                        : item.type === "answer"
-                        ? "#e0e7ff"
-                        : "#fef3c7",
-                    color:
-                      item.type === "opportunity"
-                        ? "#166534"
-                        : item.type === "answer"
-                        ? "#3730a3"
-                        : "#92400e",
+                    borderRadius: "var(--radius-chip)",
+                    background: item.type === "opportunity" ? "var(--green-soft)" : "var(--hover)",
+                    color: item.type === "opportunity" ? "var(--green)" : "var(--text-muted)",
+                    border: item.type === "opportunity" ? "1px solid var(--green-line)" : "1px solid var(--line)",
                     marginTop: "2px",
                   }}
                 >
@@ -329,7 +317,7 @@ export function GlobalSearchModal({
                     style={{
                       fontSize: "14px",
                       fontWeight: 600,
-                      color: "#1e293b",
+                      color: "var(--text)",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -340,7 +328,7 @@ export function GlobalSearchModal({
                   <div
                     style={{
                       fontSize: "12px",
-                      color: "#64748b",
+                      color: "var(--text-muted)",
                       marginTop: "1px",
                     }}
                   >
@@ -350,7 +338,7 @@ export function GlobalSearchModal({
                     <div
                       style={{
                         fontSize: "12px",
-                        color: "#94a3b8",
+                        color: "var(--text-faint)",
                         marginTop: "3px",
                         fontStyle: "italic",
                         whiteSpace: "nowrap",
@@ -375,15 +363,15 @@ export function GlobalSearchModal({
             justifyContent: "flex-end",
             gap: "12px",
             padding: "8px 16px",
-            borderTop: "1px solid var(--color-border, #e2e8f0)",
-            background: "#f8fafc",
+            borderTop: "1px solid var(--line)",
+            background: "var(--hover)",
             fontSize: "11px",
-            color: "#94a3b8",
+            color: "var(--text-faint)",
           }}
         >
-          <span>Use <strong>↑</strong> <strong>↓</strong> to navigate</span>
-          <span><strong>↵</strong> to select</span>
-          <span><strong>ESC</strong> to close</span>
+          <span>Use <strong style={{ color: "var(--text-muted)" }}>↑</strong> <strong style={{ color: "var(--text-muted)" }}>↓</strong> to navigate</span>
+          <span><strong style={{ color: "var(--text-muted)" }}>↵</strong> to select</span>
+          <span><strong style={{ color: "var(--text-muted)" }}>ESC</strong> to close</span>
         </div>
       </div>
     </div>

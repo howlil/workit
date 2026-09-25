@@ -8,6 +8,7 @@ import { scanPageQuestions } from "../autofill/detect/scan-questions";
 import { writeTextInput } from "../autofill/write/text-input-writer";
 import { verifyFieldValue } from "../autofill/verify/verify-field";
 import type { AnswerMemoryItem, JobMatchAnalysis } from "@workit/domain";
+import { BrandLogo } from "./BrandLogo";
 
 export interface SuggestedAnswerMatch {
   element: HTMLTextAreaElement | HTMLInputElement;
@@ -192,7 +193,7 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
     >
       <header className="workit-popup-header">
         <div className="workit-brand">
-          <span className="workit-brand-logo">W</span>
+          <BrandLogo size={22} className="workit-brand-logo" alt="Workit Logo" />
           <span className="workit-brand-name">Workit</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -200,7 +201,9 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
             type="button"
             className="workit-close-btn"
             onClick={() => {
-              if (typeof chrome !== "undefined" && chrome.runtime?.getURL) {
+              if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
+                chrome.runtime.sendMessage({ action: "OPEN_WORKSPACE" });
+              } else if (typeof chrome !== "undefined" && chrome.runtime?.getURL) {
                 window.open(chrome.runtime.getURL("workspace.html"), "_blank");
               } else {
                 window.open("/workspace.html", "_blank");
@@ -320,12 +323,12 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
 
               {evidenceMatch && evidenceMatch.matches.length > 0 && (
                 <div style={{ margin: "10px 0", display: "flex", flexDirection: "column", gap: 6 }} data-testid="popup-match-list">
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "#444", textTransform: "uppercase" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", textTransform: "uppercase" }}>
                     Requirements Match ({evidenceMatch.matchedCount}/{evidenceMatch.totalRequirements})
                   </div>
                   {evidenceMatch.matches.slice(0, 3).map((m, idx) => (
                     <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-                      <span style={{ color: "#333", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>
+                      <span style={{ color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>
                         {m.requirement}
                       </span>
                       <span
@@ -522,7 +525,7 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
                   data-testid={`answer-suggestion-${suggestion.fieldId}`}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: "#111" }}>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text)" }}>
                       {suggestion.question}
                     </span>
                     <span className="workit-chip" style={{ fontSize: 11 }}>
@@ -532,7 +535,7 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
                   <p
                     style={{
                       fontSize: 12,
-                      color: "#555",
+                      color: "var(--text-muted)",
                       margin: 0,
                       lineHeight: 1.4,
                       display: "-webkit-box",

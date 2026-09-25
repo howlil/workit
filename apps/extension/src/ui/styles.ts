@@ -92,11 +92,10 @@ export const WORKIT_SHADOW_STYLES = `
 }
 
 .workit-launcher-mark {
-  font-weight: 700;
-  font-size: 17px;
-  line-height: 1;
-  letter-spacing: -0.5px;
-  color: var(--green);
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
 }
 
 .workit-indicator-dot {
@@ -159,14 +158,9 @@ export const WORKIT_SHADOW_STYLES = `
   width: 22px;
   height: 22px;
   border-radius: var(--radius-chip);
-  background: var(--green);
-  color: var(--white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 12px;
-  line-height: 1;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
 }
 
 .workit-brand-name {
