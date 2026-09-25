@@ -1,7 +1,29 @@
 {
   "name": "workit",
+  "version": "0.1.0",
+  "description": "Personal job-search memory, context tracker, and smart autofill workflow system",
   "private": true,
   "type": "module",
+  "author": "howlil",
+  "license": "MIT",
+  "homepage": "https://github.com/howlil/workit#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/howlil/workit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/howlil/workit/issues"
+  },
+  "keywords": [
+    "job-search",
+    "browser-extension",
+    "autofill",
+    "application-tracking",
+    "mcp",
+    "cloudflare-workers",
+    "d1",
+    "ai-assistant"
+  ],
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",

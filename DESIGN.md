@@ -570,3 +570,30 @@ Is one primary next action obvious?
 
 ### Consistency
 Would this screen look native beside the other Workit screens?
+
+---
+
+## 18. Reusable Workspace Component Library
+
+To enforce standard design tokens and eliminate ad-hoc CSS or inline style divergence, workspace surfaces use canonical shared components from `apps/extension/src/workspace/components/`:
+
+### 1. SectionCard (`SectionCard.tsx`)
+Standardized surface card wrapper with a title, optional description subtitle, and optional header action slot.
+- Classes: `.profile-card`, `.profile-card-header`, `.profile-card-title`, `.profile-card-desc`
+
+### 2. ResumeDropzone (`ResumeDropzone.tsx`)
+Interactive drag-and-drop and click-to-upload container for resume documents (PDF, DOCX, TXT, MD). Upon successful extraction, transitions smoothly to a compact file card.
+- Classes: `.resume-dropzone`, `.resume-dropzone-icon`, `.resume-dropzone-title`, `.resume-file-card`, `.resume-file-badge`
+
+### 3. AlertBanner (`AlertBanner.tsx`)
+Full-width inline status feedback container for error, warning, and success alerts using canonical token classes.
+- Classes: `.alert-banner.is-success`, `.alert-banner.is-error`, `.alert-banner.is-warning`
+
+### 4. StatusToast (`StatusToast.tsx`)
+Compact inline status indicator rendered adjacent to submission buttons for instant save feedback without dialogs.
+- Classes: `.save-status-msg`, `.save-status-msg.is-error`
+
+### 5. EmptyState (`EmptyState.tsx`)
+Centered empty-state placeholder for zero-data views, search misses, and asynchronous loading spinners.
+- Classes: `.empty-state-card`, `.empty-state-title`, `.empty-state-desc`, `.empty-state-loader`
+

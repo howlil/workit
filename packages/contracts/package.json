@@ -1,8 +1,16 @@
 {
   "name": "@workit/contracts",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "Workit shared TypeScript types, schemas, and API contracts",
   "private": true,
   "type": "module",
+  "author": "howlil",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/howlil/workit.git",
+    "directory": "packages/contracts"
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",

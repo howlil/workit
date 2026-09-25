@@ -5,8 +5,10 @@ export default defineConfig({
   srcDir: ".",
   outDir: ".output",
   manifest: {
-    name: "Workit",
-    description: "Job search memory and workflow system",
+    name: "Workit - Job Search & Application Memory",
+    description: "Personal job search memory, context tracker, and smart autofill workflow system",
+    version: "0.1.0",
+    homepage_url: "https://github.com/howlil/workit",
     permissions: ["storage"],
     host_permissions: ["http://localhost:*/*", "http://127.0.0.1:*/*"],
     icons: {

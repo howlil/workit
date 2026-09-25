@@ -1,8 +1,16 @@
 {
   "name": "@workit/domain",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "Workit core domain entities, business logic, and match algorithms",
   "private": true,
   "type": "module",
+  "author": "howlil",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/howlil/workit.git",
+    "directory": "packages/domain"
+  },
   "exports": {
     ".": {
       "types": "./src/index.ts",

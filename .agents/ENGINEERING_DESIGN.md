@@ -775,20 +775,30 @@ This lets match evidence point to a concrete source.
 Resume import is a proposal pipeline, not a destructive synchronization.
 
 ```text
-resume
+resume file (.pdf, .docx, .txt, .md)
  ↓
-parse
+client-side extraction (pdfjs-dist / mammoth / text)
  ↓
-candidate profile facts
+raw text + metadata
+ ↓
+parse via Workit API (/api/resume/parse)
+ ↓
+candidate profile draft (ResumeDraftProfile)
  ↓
 compare to canonical profile
  ↓
-review changes
+user review & confirmation
  ↓
-approve
- ↓
-write canonical profile
+write canonical profile (FullCareerProfile)
 ```
+
+### File Extraction Architecture
+
+To avoid uploading large raw binary files to D1 and eliminate cloud processing overhead, textual extraction is performed directly in the extension workspace runtime:
+
+- **PDF Documents (`.pdf`)**: Extracted using `pdfjs-dist` page-by-page text content iterator (`page.getTextContent()`).
+- **Word Documents (`.docx`)**: Extracted using `mammoth` raw text extractor (`mammoth.extractRawText`).
+- **Markdown & Plain Text (`.md`, `.txt`)**: Extracted natively via standard `File.text()` API.
 
 Conflict rule:
 

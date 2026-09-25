@@ -1,8 +1,16 @@
 {
   "name": "@workit/extension",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "Workit Chrome MV3 browser extension for contextual job capture and smart autofill",
   "private": true,
   "type": "module",
+  "author": "howlil",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/howlil/workit.git",
+    "directory": "apps/extension"
+  },
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",

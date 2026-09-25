@@ -1,8 +1,16 @@
 {
   "name": "@workit/mcp",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "Workit Model Context Protocol (MCP) server for autonomous agents",
   "private": true,
   "type": "module",
+  "author": "howlil",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/howlil/workit.git",
+    "directory": "packages/mcp"
+  },
   "bin": {
     "workit-mcp": "./dist/cli.js"
   },
