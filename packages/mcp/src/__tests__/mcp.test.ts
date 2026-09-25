@@ -137,6 +137,15 @@ describe("S13 — Model Context Protocol (MCP) Server", () => {
           subtitle: "Acme Corp (saved)",
         } as SearchResultItem,
       ]),
+      startApplication: vi.fn().mockResolvedValue({
+        application: { id: "app_1", state: "applying" },
+        event: { id: "evt_1", action: "START_APPLICATION" },
+      }),
+      confirmSubmission: vi.fn().mockResolvedValue({
+        application: { id: "app_1", state: "applied" },
+        event: { id: "evt_2", action: "CONFIRM_SUBMISSION" },
+        answers: [],
+      }),
     };
   });
 
@@ -196,6 +205,8 @@ describe("S13 — Model Context Protocol (MCP) Server", () => {
     expect(toolNames).toContain("save_answer");
     expect(toolNames).toContain("match_job_evidence");
     expect(toolNames).toContain("search_global");
+    expect(toolNames).toContain("start_application");
+    expect(toolNames).toContain("confirm_submission");
   });
 
   describe("tools/call executions", () => {
@@ -416,6 +427,54 @@ describe("S13 — Model Context Protocol (MCP) Server", () => {
       expect(mockServices.searchGlobal).toHaveBeenCalledWith("usr_test", "Architect", "opportunity");
       const content = JSON.parse(response?.result.content[0].text);
       expect(content.count).toBe(1);
+    });
+
+    it("calls 'start_application' with opportunityId", async () => {
+      const server = createWorkitMcpServer({ services: mockServices, userId: "usr_test" });
+
+      const response = await server.handleMessage({
+        jsonrpc: "2.0",
+        id: 14,
+        method: "tools/call",
+        params: {
+          name: "start_application",
+          arguments: {
+            opportunityId: "opp_123",
+          },
+        },
+      });
+
+      expect(mockServices.startApplication).toHaveBeenCalledWith("usr_test", "opp_123");
+      const content = JSON.parse(response?.result.content[0].text);
+      expect(content.message).toContain("started successfully");
+      expect(content.application.state).toBe("applying");
+    });
+
+    it("calls 'confirm_submission' with snapshotId and answers", async () => {
+      const server = createWorkitMcpServer({ services: mockServices, userId: "usr_test" });
+
+      const response = await server.handleMessage({
+        jsonrpc: "2.0",
+        id: 15,
+        method: "tools/call",
+        params: {
+          name: "confirm_submission",
+          arguments: {
+            applicationId: "app_1",
+            snapshotId: "snap_123",
+            answers: [{ questionKey: "q1", questionText: "Question?", answerText: "Answer!" }],
+          },
+        },
+      });
+
+      expect(mockServices.confirmSubmission).toHaveBeenCalledWith("usr_test", "app_1", {
+        snapshotId: "snap_123",
+        resumeArtifactId: undefined,
+        answers: [{ questionKey: "q1", questionText: "Question?", answerText: "Answer!" }],
+      });
+      const content = JSON.parse(response?.result.content[0].text);
+      expect(content.message).toContain("confirmed and frozen");
+      expect(content.application.state).toBe("applied");
     });
 
     it("returns -32601 on unknown tool call", async () => {

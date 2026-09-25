@@ -62,6 +62,29 @@ const localServices: McpServices = {
   async searchGlobal(_userId, _query, _scope) {
     return [];
   },
+  async startApplication(_userId, opportunityId) {
+    return {
+      application: {
+        id: `app_cli_${Date.now()}`,
+        userId: "usr_local",
+        opportunityId,
+        state: "applying",
+        startedAt: new Date().toISOString(),
+      },
+    };
+  },
+  async confirmSubmission(_userId, applicationId, data) {
+    return {
+      application: {
+        id: applicationId,
+        userId: "usr_local",
+        state: "applied",
+        submittedAt: data.submittedAt || new Date().toISOString(),
+        submittedJobSnapshotId: data.snapshotId,
+      },
+      answers: data.answers || [],
+    };
+  },
 };
 
 const server = createWorkitMcpServer({

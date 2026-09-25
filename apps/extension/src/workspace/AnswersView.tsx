@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import type { AnswerMemoryItem } from "@workit/domain";
 import { workitApiClient } from "../runtime/api-client";
+import { AlertBanner } from "./components/AlertBanner";
+
 
 export function AnswersView() {
   const [answers, setAnswers] = useState<AnswerMemoryItem[]>([]);
@@ -85,23 +87,12 @@ export function AnswersView() {
         </button>
       </div>
 
-      {saveSuccessMsg && (
-        <div
-          style={{
-            background: "var(--green-soft)",
-            color: "var(--green)",
-            border: "1px solid var(--green-line)",
-            padding: "6px 10px",
-            borderRadius: "var(--radius-chip)",
-            marginBottom: 12,
-            fontSize: 12,
-            fontWeight: 500,
-          }}
-          data-testid="answer-save-success"
-        >
-          {saveSuccessMsg}
-        </div>
-      )}
+      <AlertBanner
+        variant="success"
+        message={saveSuccessMsg}
+        data-testid="answer-save-success"
+      />
+
 
       {isAdding && (
         <form

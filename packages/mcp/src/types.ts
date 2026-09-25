@@ -97,6 +97,14 @@ export interface McpServices {
     query: string,
     scope?: SearchResultType | "all"
   ): Promise<SearchResultItem[]>;
+
+  startApplication(userId: string, opportunityId: string): Promise<any>;
+
+  confirmSubmission(
+    userId: string,
+    applicationId: string,
+    data: { snapshotId: string; submittedAt?: string; resumeArtifactId?: string; answers?: any[] }
+  ): Promise<any>;
 }
 
 export interface McpServerConfig {

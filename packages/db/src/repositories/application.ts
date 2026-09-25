@@ -22,6 +22,15 @@ interface ApplicationRow {
   updated_at: string;
 }
 
+interface SubmittedAnswerRow {
+  id: string;
+  application_id: string;
+  question_key: string;
+  question_text: string;
+  answer_text: string;
+  created_at: string;
+}
+
 export class D1ApplicationRepository {
   constructor(private db: D1DatabaseLike) {}
 
@@ -150,6 +159,131 @@ export class D1ApplicationRepository {
     await this.db.batch([updateApp, updateOpp, insertEvent]);
 
     return { application: nextApplication, event };
+  }
+
+  /**
+   * Atomically confirms submission, updates Application & Opportunity states, records an event,
+   * and persists all submitted answers in a SINGLE D1 batch transaction.
+   */
+  async confirmSubmission(
+    userId: string,
+    applicationId: string,
+    data: {
+      snapshotId: string;
+      submittedAt?: string;
+      resumeArtifactId?: string;
+      answers?: Array<{ questionKey: string; questionText: string; answerText: string }>;
+    }
+  ): Promise<{ application: Application; event: ApplicationEvent; answers: SubmittedAnswer[] }> {
+    const current = await this.findById(userId, applicationId);
+    if (!current) {
+      throw new Error(`Application ${applicationId} not found`);
+    }
+
+    const submittedAt = data.submittedAt || new Date().toISOString();
+    const { nextApplication, event } = transitionApplication(current, {
+      type: "CONFIRM_SUBMISSION",
+      submittedAt,
+      snapshotId: data.snapshotId,
+      resumeArtifactId: data.resumeArtifactId,
+    });
+
+    const updateApp = this.db
+      .prepare(
+        `UPDATE applications SET
+          state = ?, submitted_at = ?, submitted_job_snapshot_id = ?,
+          submitted_resume_artifact_id = ?, updated_at = ?
+        WHERE id = ? AND user_id = ?`
+      )
+      .bind(
+        nextApplication.state,
+        nextApplication.submittedAt ?? null,
+        nextApplication.submittedJobSnapshotId ?? null,
+        nextApplication.submittedResumeArtifactId ?? null,
+        nextApplication.updatedAt,
+        applicationId,
+        userId
+      );
+
+    const updateOpp = this.db
+      .prepare(
+        `UPDATE opportunities SET
+          state = ?, updated_at = ?
+        WHERE id = ? AND user_id = ?`
+      )
+      .bind(
+        nextApplication.state,
+        nextApplication.updatedAt,
+        current.opportunityId,
+        userId
+      );
+
+    const insertEvent = this.db
+      .prepare(
+        `INSERT INTO application_events (
+          id, application_id, from_state, to_state, action, timestamp, metadata_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(
+        event.id,
+        event.applicationId,
+        event.fromState,
+        event.toState,
+        event.action,
+        event.timestamp,
+        event.metadata ? JSON.stringify(event.metadata) : null
+      );
+
+    const stmts = [updateApp, updateOpp, insertEvent];
+    const results: SubmittedAnswer[] = [];
+
+    if (data.answers && data.answers.length > 0) {
+      const now = new Date().toISOString();
+      for (const ans of data.answers) {
+        const id = `ans_${generateId()}`;
+        stmts.push(
+          this.db
+            .prepare(
+              `INSERT INTO submitted_answers (
+                id, application_id, question_key, question_text, answer_text, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?)`
+            )
+            .bind(id, applicationId, ans.questionKey, ans.questionText, ans.answerText, now)
+        );
+        results.push({
+          id,
+          applicationId,
+          questionKey: ans.questionKey,
+          questionText: ans.questionText,
+          answerText: ans.answerText,
+          createdAt: now,
+        });
+      }
+    }
+
+    // Atomic batch for all changes
+    await this.db.batch(stmts);
+
+    return { application: nextApplication, event, answers: results };
+  }
+
+  async findSubmittedAnswers(applicationId: string): Promise<SubmittedAnswer[]> {
+    const res = await this.db
+      .prepare(
+        "SELECT id, application_id, question_key, question_text, answer_text, created_at FROM submitted_answers WHERE application_id = ? ORDER BY created_at ASC"
+      )
+      .bind(applicationId)
+      .all<SubmittedAnswerRow>();
+
+    const rows = res.results || [];
+    return rows.map((r) => ({
+      id: r.id,
+      applicationId: r.application_id,
+      questionKey: r.question_key,
+      questionText: r.question_text,
+      answerText: r.answer_text,
+      createdAt: r.created_at,
+    }));
   }
 
   async recordSubmittedAnswers(

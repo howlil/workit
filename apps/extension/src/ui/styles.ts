@@ -23,8 +23,10 @@ export const WORKIT_SHADOW_STYLES = `
 
   --warning: #B86B00;
   --warning-soft: #FFF6E8;
+  --warning-line: #FFE0B2;
   --danger: #C94646;
   --danger-soft: #FFF1F1;
+  --danger-line: #FCDCDC;
 
   --radius-chip: 6px;
   --radius-control: 8px;
@@ -148,6 +150,12 @@ export const WORKIT_SHADOW_STYLES = `
   background: var(--white);
 }
 
+.workit-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .workit-brand {
   display: flex;
   align-items: center;
@@ -170,6 +178,7 @@ export const WORKIT_SHADOW_STYLES = `
   letter-spacing: -0.2px;
 }
 
+.workit-icon-btn,
 .workit-close-btn {
   border: none;
   background: transparent;
@@ -186,11 +195,13 @@ export const WORKIT_SHADOW_STYLES = `
   outline: none;
 }
 
+.workit-icon-btn:hover,
 .workit-close-btn:hover {
   background: var(--hover);
   color: var(--text);
 }
 
+.workit-icon-btn:focus-visible,
 .workit-close-btn:focus-visible {
   outline: 2px solid var(--green);
   outline-offset: 1px;
@@ -231,6 +242,23 @@ export const WORKIT_SHADOW_STYLES = `
 
 .workit-context-tag.is-job .workit-tag-dot {
   background: var(--green);
+}
+
+.workit-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.workit-status-row .workit-context-tag {
+  margin-bottom: 0;
+}
+
+.workit-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .workit-empty-message {
@@ -299,6 +327,18 @@ export const WORKIT_SHADOW_STYLES = `
   border-color: var(--green-line);
 }
 
+.workit-chip.is-warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border-color: var(--warning-line);
+}
+
+.workit-chip.is-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger-line);
+}
+
 .workit-job-snippet {
   margin-top: 12px;
   padding: 10px 12px;
@@ -346,6 +386,38 @@ export const WORKIT_SHADOW_STYLES = `
 .workit-primary-btn:focus-visible {
   outline: 2px solid var(--green);
   outline-offset: 2px;
+}
+
+.workit-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--white);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  font-weight: 500;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 100ms ease;
+  outline: none;
+}
+
+.workit-secondary-btn:hover {
+  background: var(--hover);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.workit-secondary-btn:active {
+  transform: scale(0.97);
+}
+
+.workit-secondary-btn:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
 }
 
 /* Autofill Assistant (S6) */
@@ -416,6 +488,117 @@ export const WORKIT_SHADOW_STYLES = `
   font-size: 12px;
   font-weight: 500;
   text-align: center;
+}
+
+.workit-alert-error {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-chip);
+  font-size: 12px;
+  color: var(--danger);
+  background-color: var(--danger-soft);
+  border: 1px solid var(--danger-line);
+  line-height: 1.4;
+}
+
+/* Requirements Match (Job Context) */
+.workit-match-section {
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.workit-match-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.workit-match-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  gap: 8px;
+}
+
+.workit-match-req {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+/* Submission Card (Saved Job Context) */
+.workit-submission-card {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: var(--radius-card);
+  background: var(--hover);
+  border: 1px solid var(--line);
+}
+
+.workit-submission-text {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+/* Answer Memory Suggestion Card */
+.workit-suggestion-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--white);
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--line);
+  transition: border-color 120ms ease;
+}
+
+.workit-suggestion-card:hover {
+  border-color: var(--green-line);
+}
+
+.workit-suggestion-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+}
+
+.workit-suggestion-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workit-suggestion-body {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.workit-suggestion-footer {
+  margin-top: 4px;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
 }
 `;
 

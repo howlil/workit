@@ -33,24 +33,7 @@ export class ApplicationService {
     applicationId: string,
     data: ConfirmSubmissionRequest
   ): Promise<ConfirmSubmissionResponse> {
-    const submittedAt = data.submittedAt || new Date().toISOString();
-    const { application, event } = await this.repo.transition(
-      userId,
-      applicationId,
-      {
-        type: "CONFIRM_SUBMISSION",
-        submittedAt,
-        snapshotId: data.snapshotId,
-        resumeArtifactId: data.resumeArtifactId,
-      }
-    );
-
-    let answers: any[] = [];
-    if (data.answers && data.answers.length > 0) {
-      answers = await this.repo.recordSubmittedAnswers(applicationId, data.answers);
-    }
-
-    return { application, event, answers };
+    return this.repo.confirmSubmission(userId, applicationId, data);
   }
 
   async getByOpportunity(
@@ -60,9 +43,11 @@ export class ApplicationService {
     const application = await this.repo.findByOpportunity(userId, opportunityId);
     if (!application) return null;
 
+    const answers = await this.repo.findSubmittedAnswers(application.id);
+
     return {
       application,
-      answers: [],
+      answers,
     };
   }
 }

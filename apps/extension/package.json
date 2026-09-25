@@ -13,6 +13,8 @@
     "@workit/contracts": "workspace:*",
     "@workit/domain": "workspace:*",
     "@workit/shared": "workspace:*",
+    "mammoth": "^1.12.3",
+    "pdfjs-dist": "^6.3.289",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

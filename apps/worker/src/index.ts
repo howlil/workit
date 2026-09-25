@@ -26,6 +26,8 @@ import { createMcpRouter } from "./http/mcp.js";
 
 type Bindings = {
   DB?: D1DatabaseLike;
+  ENVIRONMENT?: string;
+  AUTH_SECRET?: string;
 };
 
 type Variables = {
@@ -34,17 +36,77 @@ type Variables = {
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
-// Authentication middleware — extracts authenticated identity
-app.use("*", async (c, next) => {
-  const userIdHeader = c.req.header("x-user-id");
-  const userId = userIdHeader || "usr_default";
-  c.set("userId", userId);
-  await next();
-});
+/**
+ * Resolves the authenticated user identity from request headers and runtime environment.
+ * In production: Enforces Bearer token or Cloudflare Access headers.
+ * In development / test: Allows fallback to x-user-id header or default user.
+ */
+export function resolveAuthenticatedUserId(c: any): string | null {
+  const isProduction =
+    c.env?.ENVIRONMENT === "production" ||
+    (typeof process !== "undefined" && process.env?.NODE_ENV === "production");
 
-// Health check
+  const authHeader = c.req.header("authorization");
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.slice(7).trim();
+    if (token) {
+      if (token.startsWith("usr_")) {
+        return token;
+      }
+      try {
+        const parts = token.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+          if (payload.sub) return payload.sub;
+        }
+      } catch {
+        // Fall through
+      }
+      return token;
+    }
+  }
+
+  // Cloudflare Access header support
+  const cfAccessUser = c.req.header("cf-access-authenticated-user-email");
+  if (cfAccessUser) {
+    return `usr_${cfAccessUser.toLowerCase().replace(/[^a-z0-9]/g, "_")}`;
+  }
+
+  if (isProduction) {
+    // In production, unauthenticated requests are strictly rejected
+    return null;
+  }
+
+  // Development / test fallback
+  const userIdHeader = c.req.header("x-user-id");
+  if (userIdHeader) {
+    return userIdHeader;
+  }
+
+  return "usr_default";
+}
+
+// Health check — public
 app.get("/api/health", (c) => {
   return c.json({ status: "ok", service: "workit-api" });
+});
+
+// Authentication middleware — extracts authenticated identity
+app.use("*", async (c, next) => {
+  if (c.req.path === "/api/health") {
+    return next();
+  }
+
+  const userId = resolveAuthenticatedUserId(c);
+  if (!userId) {
+    return c.json(
+      { error: "Unauthorized: Missing or invalid authentication token" },
+      401
+    );
+  }
+
+  c.set("userId", userId);
+  await next();
 });
 
 // Helpers to instantiate services per request
@@ -328,6 +390,14 @@ class MemoryD1Database implements D1DatabaseLike {
       const [id, application_id, question_key, question_text, answer_text, created_at] = bound;
       this.rows.submittedAnswers.set(id, { id, application_id, question_key, question_text, answer_text, created_at });
       return [];
+    }
+    if (s.includes("FROM submitted_answers WHERE application_id = ?")) {
+      const [appId] = bound;
+      const list: any[] = [];
+      for (const ans of this.rows.submittedAnswers.values()) {
+        if (ans.application_id === appId) list.push({ ...ans });
+      }
+      return list;
     }
 
     // Answer Memories

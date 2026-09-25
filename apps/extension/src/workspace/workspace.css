@@ -638,6 +638,75 @@ body {
   gap: 4px;
 }
 
+.save-status-msg.is-error {
+  color: var(--danger);
+}
+
+/* Alert Banner (shared component) */
+.alert-banner {
+  padding: 6px 10px;
+  border-radius: var(--radius-chip);
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.alert-banner.is-success {
+  background: var(--green-soft);
+  color: var(--green);
+  border: 1px solid var(--green-line);
+}
+
+.alert-banner.is-error {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger-line);
+}
+
+.alert-banner.is-warning {
+  background: var(--hover);
+  color: var(--text);
+  border: 1px solid var(--warning-line);
+}
+
+/* Empty State (shared component) */
+.empty-state-card {
+  text-align: center;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--white);
+  margin-bottom: 12px;
+}
+
+.empty-state-title {
+  margin: 0;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.empty-state-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.empty-state-loader {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--line);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-top: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .profile-items-list {
   display: flex;
   flex-direction: column;
@@ -726,6 +795,13 @@ body {
   margin-bottom: 16px;
 }
 
+.skill-add-row {
+  display: flex;
+  gap: 8px;
+  max-width: 400px;
+  margin-bottom: 16px;
+}
+
 .skill-chip {
   display: inline-flex;
   align-items: center;
@@ -755,4 +831,141 @@ body {
 .skill-remove-btn:hover {
   color: var(--danger);
 }
+
+/* Resume Upload & Dropzone (S10) */
+.resume-upload-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.resume-dropzone {
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-control);
+  background: var(--white);
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.resume-dropzone:hover,
+.resume-dropzone.is-dragover {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.resume-dropzone-icon {
+  width: 28px;
+  height: 28px;
+  color: var(--green);
+  margin-bottom: 2px;
+}
+
+.resume-dropzone-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.resume-dropzone-title .dropzone-highlight {
+  color: var(--green);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.resume-dropzone-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.resume-file-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--hover);
+  transition: border-color 120ms ease;
+}
+
+.resume-file-card:hover {
+  border-color: var(--line-strong);
+}
+
+.resume-file-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.resume-file-badge {
+  padding: 2px 7px;
+  border-radius: var(--radius-chip);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--green-soft);
+  color: var(--green);
+  border: 1px solid var(--green-line);
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.resume-file-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.resume-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 340px;
+}
+
+.resume-file-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.resume-file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-file-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: var(--radius-chip);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.btn-file-remove:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 

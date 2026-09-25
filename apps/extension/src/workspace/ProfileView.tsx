@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import type { FullCareerProfile, ResumeDraftProfile } from "@workit/contracts";
 import { workitApiClient } from "../runtime/api-client";
+import { SectionCard } from "./components/SectionCard";
+import { StatusToast } from "./components/StatusToast";
+import { AlertBanner } from "./components/AlertBanner";
+import { ResumeDropzone } from "./components/ResumeDropzone";
+import type { ExtractedFileResult } from "./utils/file-text-extractor";
 
 export function ProfileView() {
   const [profileData, setProfileData] = useState<FullCareerProfile | null>(null);
@@ -9,11 +14,13 @@ export function ProfileView() {
   // Resume Import State
   const [resumeText, setResumeText] = useState("");
   const [resumeFileName, setResumeFileName] = useState("resume.txt");
+  const [resumeMimeType, setResumeMimeType] = useState("text/plain");
   const [resumeDraft, setResumeDraft] = useState<ResumeDraftProfile | null>(null);
   const [resumeArtifactId, setResumeArtifactId] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [importStatusMsg, setImportStatusMsg] = useState<string | null>(null);
+  const [importStatusVariant, setImportStatusVariant] = useState<"success" | "error">("success");
 
   // Identity Form State
   const [fullName, setFullName] = useState("");
@@ -73,18 +80,11 @@ export function ProfileView() {
     loadProfile();
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setResumeFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const text = evt.target?.result as string;
-      if (text) {
-        setResumeText(text);
-      }
-    };
-    reader.readAsText(file);
+  const handleFileExtracted = (result: ExtractedFileResult) => {
+    setResumeFileName(result.fileName);
+    setResumeMimeType(result.mimeType);
+    setResumeText(result.text);
+    setImportStatusMsg(null);
   };
 
   const handleParseResume = async () => {
@@ -94,13 +94,15 @@ export function ProfileView() {
     try {
       const res = await workitApiClient.parseResumeText(
         resumeFileName || "resume.txt",
-        resumeText.trim()
+        resumeText.trim(),
+        resumeMimeType
       );
       setResumeDraft(res.draft);
       setResumeArtifactId(res.artifactId);
     } catch (err) {
       console.error("[Workit] Failed to parse resume:", err);
-      setImportStatusMsg("Failed to parse resume text.");
+      setImportStatusMsg("Failed to parse resume. Please try again.");
+      setImportStatusVariant("error");
     } finally {
       setIsParsing(false);
     }
@@ -127,10 +129,13 @@ export function ProfileView() {
 
       setResumeDraft(null);
       setResumeText("");
+      setResumeMimeType("text/plain");
+      setImportStatusVariant("success");
       setImportStatusMsg("Profile successfully populated from resume! ✓");
       setTimeout(() => setImportStatusMsg(null), 4000);
     } catch (err) {
       console.error("[Workit] Failed to confirm resume draft:", err);
+      setImportStatusVariant("error");
       setImportStatusMsg("Failed to update profile from draft.");
     } finally {
       setIsConfirming(false);
@@ -295,31 +300,25 @@ export function ProfileView() {
   return (
     <div className="profile-container" data-testid="profile-view">
       {/* 0. Resume Import Card */}
-      <section className="profile-card" data-testid="profile-resume-import-section">
-        <div className="profile-card-header">
-          <div>
-            <h2 className="profile-card-title">Import Resume</h2>
-            <p className="profile-card-desc">
-              Upload a resume or paste text to extract candidate data into a reviewable draft
-            </p>
-          </div>
-        </div>
+      <SectionCard
+        title="Import Resume"
+        description="Upload a PDF, DOCX, or paste text to extract candidate data into a reviewable draft"
+        data-testid="profile-resume-import-section"
+      >
+        <div className="resume-upload-wrapper">
+          <ResumeDropzone
+            onExtracted={handleFileExtracted}
+            onError={(msg) => {
+              setImportStatusVariant("error");
+              setImportStatusMsg(msg);
+            }}
+            data-testid="resume-dropzone"
+          />
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
-          <div>
-            <label className="form-label" htmlFor="input-resume-file">Upload Resume File (.txt, .md)</label>
-            <input
-              id="input-resume-file"
-              data-testid="input-resume-file"
-              type="file"
-              accept=".txt,.md,.text"
-              onChange={handleFileChange}
-              style={{ fontSize: "12px", color: "var(--text-muted)" }}
-            />
-          </div>
-
-          <div>
-            <label className="form-label" htmlFor="textarea-resume-text">Or Paste Resume Content</label>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" htmlFor="textarea-resume-text">
+              Or paste resume content
+            </label>
             <textarea
               id="textarea-resume-text"
               data-testid="textarea-resume-text"
@@ -330,45 +329,35 @@ export function ProfileView() {
               onChange={(e) => setResumeText(e.target.value)}
             />
           </div>
+        </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <button
-              type="button"
-              className="btn-primary"
-              data-testid="btn-parse-resume"
-              disabled={!resumeText.trim() || isParsing}
-              onClick={handleParseResume}
-            >
-              {isParsing ? "Parsing..." : "Parse Resume"}
-            </button>
-            {importStatusMsg && (
-              <span className="save-status-msg" data-testid="resume-import-status">
-                {importStatusMsg}
-              </span>
-            )}
-          </div>
+        <AlertBanner
+          variant={importStatusVariant}
+          message={importStatusMsg}
+          data-testid="resume-import-status"
+        />
+
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn-primary"
+            data-testid="btn-parse-resume"
+            disabled={!resumeText.trim() || isParsing}
+            onClick={handleParseResume}
+          >
+            {isParsing ? "Parsing…" : "Parse Resume"}
+          </button>
         </div>
 
         {/* Parsed Draft Review Box */}
         {resumeDraft && (
-          <div
-            data-testid="resume-draft-review"
-            style={{
-              padding: "10px 14px",
-              background: "var(--hover)",
-              border: "1px solid var(--line)",
-              borderRadius: "var(--radius-control)",
-              marginTop: "10px",
-            }}
-          >
-            <div style={{ fontWeight: 600, fontSize: "13px", marginBottom: "6px" }}>
-              Review Parsed Draft (Proposal)
-            </div>
-            <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "10px" }}>
+          <div className="subform-box" data-testid="resume-draft-review" style={{ marginTop: 12 }}>
+            <h4 className="subform-title">Review Parsed Draft (Proposal)</h4>
+            <p className="profile-card-desc" style={{ marginBottom: 10 }}>
               Workit extracted the following structured data. Please verify before applying to your profile.
             </p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "12px", marginBottom: "10px" }}>
+            <div className="form-grid-2" style={{ marginBottom: 10, fontSize: 12 }}>
               <div><strong>Name:</strong> {resumeDraft.identity.fullName || "(none detected)"}</div>
               <div><strong>Email:</strong> {resumeDraft.identity.email || "(none detected)"}</div>
               <div><strong>Phone:</strong> {resumeDraft.identity.phone || "(none detected)"}</div>
@@ -378,11 +367,11 @@ export function ProfileView() {
             </div>
 
             {resumeDraft.skills.length > 0 && (
-              <div style={{ marginBottom: "12px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-muted)" }}>Detected Skills:</span>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+              <div style={{ marginBottom: 12 }}>
+                <span className="form-label">Detected Skills:</span>
+                <div className="skills-tags-row" style={{ marginTop: 4, marginBottom: 0 }}>
                   {resumeDraft.skills.map((s) => (
-                    <span key={s} className="skill-chip" style={{ fontSize: "12px" }}>
+                    <span key={s} className="skill-chip">
                       {s}
                     </span>
                   ))}
@@ -390,7 +379,7 @@ export function ProfileView() {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+            <div className="form-actions">
               <button
                 type="button"
                 className="btn-primary"
@@ -398,7 +387,7 @@ export function ProfileView() {
                 disabled={isConfirming}
                 onClick={handleConfirmResumeDraft}
               >
-                {isConfirming ? "Populating..." : "Confirm & Populate Profile"}
+                {isConfirming ? "Populating…" : "Confirm & Populate Profile"}
               </button>
               <button
                 type="button"
@@ -411,19 +400,17 @@ export function ProfileView() {
             </div>
           </div>
         )}
-      </section>
+      </SectionCard>
 
       {/* 1. Identity Card */}
-      <section className="profile-card" data-testid="profile-identity-section">
-        <div className="profile-card-header">
-          <div>
-            <h2 className="profile-card-title">Personal Identity</h2>
-            <p className="profile-card-desc">Authoritative contact information used for candidate details</p>
-          </div>
-        </div>
-
+      <SectionCard
+        title="Personal Identity"
+        description="Authoritative contact information used for candidate details"
+        data-testid="profile-identity-section"
+      >
 
         <form onSubmit={handleSaveIdentity}>
+
           <div className="form-grid-2">
             <div className="form-group">
               <label className="form-label" htmlFor="input-fullname">Full Name *</label>
@@ -520,23 +507,20 @@ export function ProfileView() {
             >
               Save Identity
             </button>
-            {identitySaved && (
-              <span className="save-status-msg" data-testid="identity-save-status">
-                Identity saved ✓
-              </span>
-            )}
+            <StatusToast
+              message={identitySaved ? "Identity saved ✓" : null}
+              data-testid="identity-save-status"
+            />
           </div>
         </form>
-      </section>
+      </SectionCard>
 
       {/* 2. Experience Card */}
-      <section className="profile-card" data-testid="profile-experience-section">
-        <div className="profile-card-header">
-          <div>
-            <h2 className="profile-card-title">Work Experience & Facts</h2>
-            <p className="profile-card-desc">Individual facts serve as verifiable evidence for job criteria matching</p>
-          </div>
-        </div>
+      <SectionCard
+        title="Work Experience & Facts"
+        description="Individual facts serve as verifiable evidence for job criteria matching"
+        data-testid="profile-experience-section"
+      >
 
         {/* Existing experiences list */}
         {profileData && profileData.experiences.length > 0 && (
@@ -676,17 +660,14 @@ export function ProfileView() {
             Add Experience
           </button>
         </form>
-      </section>
+      </SectionCard>
 
       {/* 3. Education Card */}
-      <section className="profile-card" data-testid="profile-education-section">
-        <div className="profile-card-header">
-          <div>
-            <h2 className="profile-card-title">Education</h2>
-            <p className="profile-card-desc">Academic background and degrees</p>
-          </div>
-        </div>
-
+      <SectionCard
+        title="Education"
+        description="Academic background and degrees"
+        data-testid="profile-education-section"
+      >
         {/* Existing education list */}
         {profileData && profileData.education.length > 0 && (
           <div className="profile-items-list" data-testid="education-list">
@@ -789,17 +770,14 @@ export function ProfileView() {
             Add Education
           </button>
         </form>
-      </section>
+      </SectionCard>
 
       {/* 4. Skills Card */}
-      <section className="profile-card" data-testid="profile-skills-section">
-        <div className="profile-card-header">
-          <div>
-            <h2 className="profile-card-title">Skills & Proficiencies</h2>
-            <p className="profile-card-desc">Canonical keywords mapped to job posting requirements</p>
-          </div>
-        </div>
-
+      <SectionCard
+        title="Skills & Proficiencies"
+        description="Canonical keywords mapped to job posting requirements"
+        data-testid="profile-skills-section"
+      >
         <div className="skills-tags-row" data-testid="skills-tags-row">
           {skillTags.map((skill) => (
             <span key={skill} className="skill-chip" data-testid={`skill-chip-${skill}`}>
@@ -816,7 +794,7 @@ export function ProfileView() {
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: "8px", maxWidth: "400px", marginBottom: "16px" }}>
+        <div className="skill-add-row">
           <input
             data-testid="input-skill-entry"
             className="form-input"
@@ -849,13 +827,12 @@ export function ProfileView() {
           >
             Save Skills
           </button>
-          {skillsSaved && (
-            <span className="save-status-msg" data-testid="skills-save-status">
-              Skills saved ✓
-            </span>
-          )}
+          <StatusToast
+            message={skillsSaved ? "Skills saved ✓" : null}
+            data-testid="skills-save-status"
+          />
         </div>
-      </section>
+      </SectionCard>
     </div>
   );
 }

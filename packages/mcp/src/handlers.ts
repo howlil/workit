@@ -265,6 +265,69 @@ export async function executeMcpTool(
         };
       }
 
+      case "start_application": {
+        const opportunityId = safeArgs.opportunityId;
+        if (!opportunityId || typeof opportunityId !== "string") {
+          return {
+            content: [{ type: "text", text: "Error: Missing required argument 'opportunityId'" }],
+            isError: true,
+          };
+        }
+
+        const result = await services.startApplication(userId, opportunityId);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  message: "Application started successfully.",
+                  ...result,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      case "confirm_submission": {
+        const { applicationId, snapshotId, resumeArtifactId, answers } = safeArgs;
+        if (!applicationId || !snapshotId) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "Error: 'applicationId' and 'snapshotId' are required arguments.",
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const result = await services.confirmSubmission(userId, applicationId, {
+          snapshotId,
+          resumeArtifactId,
+          answers,
+        });
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(
+                {
+                  message: "Application submission confirmed and frozen to historical snapshot.",
+                  ...result,
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
       default:
         return {
           content: [{ type: "text", text: `Unknown tool: ${toolName}` }],

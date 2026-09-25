@@ -101,5 +101,16 @@ describe("Worker Applications API", () => {
     });
     const oppData = (await oppRes.json()) as any;
     expect(oppData.opportunity.state).toBe("applied");
+
+    // Verify GET /api/applications/by-opportunity/:opportunityId returns the submitted answers
+    const detailRes = await app.request(`/api/applications/by-opportunity/${opportunityId}`, {
+      headers: { "x-user-id": userId },
+    });
+    expect(detailRes.status).toBe(200);
+    const detailData = (await detailRes.json()) as any;
+    expect(detailData.application.state).toBe("applied");
+    expect(detailData.answers.length).toBe(1);
+    expect(detailData.answers[0].questionKey).toBe("years_experience");
+    expect(detailData.answers[0].answerText).toBe("7 years");
   });
 });

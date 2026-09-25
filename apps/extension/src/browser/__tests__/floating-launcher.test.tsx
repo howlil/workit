@@ -191,6 +191,11 @@ describe("S1 — Floating Launcher & ShadowRoot Isolation", () => {
     expect(shadowStyles).not.toBeNull();
     expect(shadowStyles?.textContent).toContain(".workit-launcher");
     expect(shadowStyles?.textContent).toContain("--green: #2F7D44");
+    expect(shadowStyles?.textContent).toContain("--warning-line: #FFE0B2");
+    expect(shadowStyles?.textContent).toContain("--danger-line: #FCDCDC");
+    expect(shadowStyles?.textContent).toContain(".workit-alert-error");
+    expect(shadowStyles?.textContent).toContain(".workit-secondary-btn");
+    expect(shadowStyles?.textContent).toContain(".workit-chip.is-warning");
     expect(shadowStyles?.textContent).toContain("position: fixed");
 
     // Clean up hostile style

@@ -183,4 +183,55 @@ export const WORKIT_MCP_TOOLS: ToolDefinition[] = [
       required: ["query"],
     },
   },
+  {
+    name: "start_application",
+    description:
+      "Start applying to a saved job opportunity, transitioning application state to 'applying'.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        opportunityId: {
+          type: "string",
+          description: "ID of the saved opportunity to begin applying to",
+        },
+      },
+      required: ["opportunityId"],
+    },
+  },
+  {
+    name: "confirm_submission",
+    description:
+      "Confirm and lock an application submission with an immutable historical job snapshot and optional submitted answers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        applicationId: {
+          type: "string",
+          description: "ID of the application being submitted",
+        },
+        snapshotId: {
+          type: "string",
+          description: "ID of the frozen job snapshot",
+        },
+        resumeArtifactId: {
+          type: "string",
+          description: "Optional ID of the resume artifact used for the submission",
+        },
+        answers: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              questionKey: { type: "string" },
+              questionText: { type: "string" },
+              answerText: { type: "string" },
+            },
+            required: ["questionKey", "questionText", "answerText"],
+          },
+          description: "Application questions and answers submitted",
+        },
+      },
+      required: ["applicationId", "snapshotId"],
+    },
+  },
 ];

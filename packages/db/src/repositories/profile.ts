@@ -430,6 +430,162 @@ export class D1ProfileRepository {
     return result;
   }
 
+  /**
+   * Atomically imports an entire resume draft (identity, experiences, facts, education, skills)
+   * within a single D1 batch transaction.
+   */
+  async batchImportProfile(
+    userId: string,
+    draft: {
+      identity?: UpdateProfileIdentityInput;
+      experiences?: CreateExperienceInput[];
+      education?: CreateEducationInput[];
+      skills?: string[];
+    }
+  ): Promise<FullCareerProfile> {
+    const full = await this.getOrCreateProfile(userId);
+    const profileId = full.profile.id;
+    const now = new Date().toISOString();
+    const stmts: any[] = [];
+
+    // 1. Identity update
+    if (draft.identity && Object.keys(draft.identity).length > 0) {
+      const updatedIdentity = {
+        fullName: draft.identity.fullName ?? full.profile.fullName,
+        email: draft.identity.email ?? full.profile.email,
+        phone: draft.identity.phone ?? full.profile.phone,
+        location: draft.identity.location ?? full.profile.location,
+        linkedinUrl: draft.identity.linkedinUrl ?? full.profile.linkedinUrl,
+        portfolioUrl: draft.identity.portfolioUrl ?? full.profile.portfolioUrl,
+        githubUrl: draft.identity.githubUrl ?? full.profile.githubUrl,
+        summary: draft.identity.summary ?? full.profile.summary,
+      };
+
+      stmts.push(
+        this.db
+          .prepare(
+            `UPDATE career_profiles SET
+              full_name = ?, email = ?, phone = ?, location = ?,
+              linkedin_url = ?, portfolio_url = ?, github_url = ?, summary = ?,
+              updated_at = ?
+            WHERE id = ? AND user_id = ?`
+          )
+          .bind(
+            updatedIdentity.fullName,
+            updatedIdentity.email,
+            updatedIdentity.phone ?? null,
+            updatedIdentity.location ?? null,
+            updatedIdentity.linkedinUrl ?? null,
+            updatedIdentity.portfolioUrl ?? null,
+            updatedIdentity.githubUrl ?? null,
+            updatedIdentity.summary ?? null,
+            now,
+            profileId,
+            userId
+          )
+      );
+    }
+
+    // 2. Experiences & Facts
+    if (draft.experiences && draft.experiences.length > 0) {
+      for (const exp of draft.experiences) {
+        const expId = `exp_${generateId()}`;
+        stmts.push(
+          this.db
+            .prepare(
+              `INSERT INTO profile_experiences (
+                id, profile_id, company, title, location,
+                start_date, end_date, is_current, description,
+                created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            )
+            .bind(
+              expId,
+              profileId,
+              exp.company,
+              exp.title,
+              exp.location ?? null,
+              exp.startDate,
+              exp.endDate ?? null,
+              exp.isCurrent ? 1 : 0,
+              exp.description ?? null,
+              now,
+              now
+            )
+        );
+
+        if (exp.facts && exp.facts.length > 0) {
+          for (const factText of exp.facts) {
+            if (!factText.trim()) continue;
+            const factId = `fact_${generateId()}`;
+            stmts.push(
+              this.db
+                .prepare(
+                  "INSERT INTO profile_experience_facts (id, experience_id, fact_text, fact_type, created_at) VALUES (?, ?, ?, ?, ?)"
+                )
+                .bind(factId, expId, factText.trim(), "achievement", now)
+            );
+          }
+        }
+      }
+    }
+
+    // 3. Education
+    if (draft.education && draft.education.length > 0) {
+      for (const edu of draft.education) {
+        const eduId = `edu_${generateId()}`;
+        stmts.push(
+          this.db
+            .prepare(
+              `INSERT INTO profile_education (
+                id, profile_id, institution, degree, field_of_study,
+                start_date, end_date, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+            )
+            .bind(
+              eduId,
+              profileId,
+              edu.institution,
+              edu.degree ?? null,
+              edu.fieldOfStudy ?? null,
+              edu.startDate ?? null,
+              edu.endDate ?? null,
+              now
+            )
+        );
+      }
+    }
+
+    // 4. Skills
+    if (draft.skills && draft.skills.length > 0) {
+      const existingSkillNames = full.skills.map((s) => s.name);
+      const mergedSkills = Array.from(new Set([...existingSkillNames, ...draft.skills]));
+      stmts.push(
+        this.db
+          .prepare("DELETE FROM profile_skills WHERE profile_id = ?")
+          .bind(profileId)
+      );
+      for (const name of mergedSkills) {
+        const trimmed = name.trim();
+        if (!trimmed) continue;
+        const skillId = `skl_${generateId()}`;
+        stmts.push(
+          this.db
+            .prepare(
+              "INSERT INTO profile_skills (id, profile_id, name, category, created_at) VALUES (?, ?, ?, ?, ?)"
+            )
+            .bind(skillId, profileId, trimmed, null, now)
+        );
+      }
+    }
+
+    if (stmts.length > 0) {
+      await this.db.batch(stmts);
+    }
+
+    return this.getOrCreateProfile(userId);
+  }
+
   private mapProfileRow(row: CareerProfileRow): CareerProfile {
     return {
       id: row.id,

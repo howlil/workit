@@ -32,25 +32,66 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
   const [autofillResultMsg, setAutofillResultMsg] = useState<string | null>(null);
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [applicationState, setApplicationState] = useState<"saved" | "applying" | "applied">("saved");
+  const [actionErrorMsg, setActionErrorMsg] = useState<string | null>(null);
   const [suggestedAnswers, setSuggestedAnswers] = useState<SuggestedAnswerMatch[]>([]);
   const [evidenceMatch, setEvidenceMatch] = useState<JobMatchAnalysis | null>(null);
 
+  // Synchronize real application state from database on mount or opportunity change
+  useEffect(() => {
+    let mounted = true;
+    async function syncApplicationState() {
+      if (browserContext.type === "saved-job" && browserContext.opportunityId) {
+        try {
+          const detail = await workitApiClient.getApplication(browserContext.opportunityId);
+          if (mounted && detail?.application) {
+            setApplicationId(detail.application.id);
+            if (detail.application.state === "applied") {
+              setApplicationState("applied");
+            } else if (detail.application.state === "applying") {
+              setApplicationState("applying");
+            } else {
+              setApplicationState("saved");
+            }
+          }
+        } catch (err) {
+          console.warn("[Workit] Failed to sync application state:", err);
+        }
+      }
+    }
+    syncApplicationState();
+    return () => {
+      mounted = false;
+    };
+  }, [browserContext]);
+
   const handleStartApplying = async () => {
     if (browserContext.type !== "saved-job") return;
+    setActionErrorMsg(null);
     try {
       const res = await workitApiClient.startApplication(browserContext.opportunityId);
       setApplicationId(res.application.id);
       setApplicationState("applying");
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Workit] Failed to start application:", err);
-      setApplicationState("applying");
+      setActionErrorMsg(err?.message || "Failed to start application");
     }
   };
 
   const handleConfirmSubmission = async () => {
     if (browserContext.type !== "saved-job") return;
+    setActionErrorMsg(null);
     try {
-      const appId = applicationId || `app_${browserContext.opportunityId}`;
+      let appId = applicationId;
+      if (!appId) {
+        const existing = await workitApiClient.getApplication(browserContext.opportunityId);
+        if (existing?.application) {
+          appId = existing.application.id;
+        } else {
+          const started = await workitApiClient.startApplication(browserContext.opportunityId);
+          appId = started.application.id;
+        }
+        setApplicationId(appId);
+      }
       const oppDetail = await workitApiClient.getOpportunityDetail(browserContext.opportunityId);
       const snapshotId = oppDetail?.opportunity.currentSnapshotId || "snap_default";
       await workitApiClient.confirmSubmission(
@@ -59,9 +100,9 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
         browserContext.opportunityId
       );
       setApplicationState("applied");
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Workit] Failed to confirm submission:", err);
-      setApplicationState("applied");
+      setActionErrorMsg(err?.message || "Failed to confirm submission");
     }
   };
 
@@ -196,10 +237,10 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
           <BrandLogo size={22} className="workit-brand-logo" alt="Workit Logo" />
           <span className="workit-brand-name">Workit</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="workit-header-actions">
           <button
             type="button"
-            className="workit-close-btn"
+            className="workit-icon-btn"
             onClick={() => {
               if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
                 chrome.runtime.sendMessage({ action: "OPEN_WORKSPACE" });
@@ -270,12 +311,12 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
 
         {browserContext.type === "job" && (
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <div className="workit-context-tag is-job" style={{ marginBottom: 0 }}>
+            <div className="workit-status-row">
+              <div className="workit-context-tag is-job">
                 <span className="workit-tag-dot" />
                 <span>Job detected</span>
               </div>
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <div className="workit-badges-row">
                 {evidenceMatch && (
                   <span className="workit-chip is-green" data-testid="workit-match-badge">
                     {evidenceMatch.overallScore}% match
@@ -322,18 +363,23 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
               )}
 
               {evidenceMatch && evidenceMatch.matches.length > 0 && (
-                <div style={{ margin: "10px 0", display: "flex", flexDirection: "column", gap: 6 }} data-testid="popup-match-list">
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text)", textTransform: "uppercase" }}>
+                <div className="workit-match-section" data-testid="popup-match-list">
+                  <div className="workit-match-header">
                     Requirements Match ({evidenceMatch.matchedCount}/{evidenceMatch.totalRequirements})
                   </div>
                   {evidenceMatch.matches.slice(0, 3).map((m, idx) => (
-                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-                      <span style={{ color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 190 }}>
+                    <div key={idx} className="workit-match-item">
+                      <span className="workit-match-req" title={m.requirement}>
                         {m.requirement}
                       </span>
                       <span
-                        className={`workit-chip ${m.status === "matched" ? "is-green" : ""}`}
-                        style={{ fontSize: 10, padding: "1px 6px" }}
+                        className={`workit-chip ${
+                          m.status === "matched"
+                            ? "is-green"
+                            : m.status === "partial"
+                            ? "is-warning"
+                            : "is-danger"
+                        }`}
                         data-testid={`popup-match-${m.status}`}
                       >
                         {m.status === "matched" ? "✓" : m.status === "partial" ? "~" : "✗"}
@@ -392,7 +438,6 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
                 type="button"
                 className="workit-primary-btn"
                 data-testid="workit-applying-btn"
-                style={{ marginTop: 16 }}
                 onClick={handleStartApplying}
               >
                 I'm applying
@@ -400,13 +445,13 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
             )}
 
             {applicationState === "applying" && (
-              <div style={{ marginTop: 14 }} data-testid="workit-submission-box">
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div className="workit-submission-card" data-testid="workit-submission-box">
+                <div className="workit-status-row">
                   <span className="workit-chip is-green" data-testid="applying-status-chip">
                     Applying In Progress
                   </span>
                 </div>
-                <p style={{ fontSize: 13, marginBottom: 10 }}>
+                <p className="workit-submission-text">
                   Did you submit your application on the website?
                 </p>
                 <button
@@ -420,11 +465,9 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
               </div>
             )}
 
-            {applicationState === "applied" && (
-              <div style={{ marginTop: 14 }}>
-                <span className="workit-chip is-green" data-testid="applied-status-badge">
-                  Applied ✓
-                </span>
+            {actionErrorMsg && (
+              <div className="workit-alert-error" data-testid="workit-action-error">
+                {actionErrorMsg}
               </div>
             )}
           </div>
@@ -494,7 +537,7 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
 
         {/* S8 — Answer Memory Suggestions */}
         {suggestedAnswers.length > 0 && (
-          <div className="workit-autofill-section" data-testid="workit-answer-memory-section" style={{ marginTop: 14 }}>
+          <div className="workit-autofill-section" data-testid="workit-answer-memory-section">
             <div className="workit-autofill-header">
               <div className="workit-autofill-title">
                 <svg
@@ -520,34 +563,24 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
               {suggestedAnswers.map((suggestion) => (
                 <div
                   key={suggestion.fieldId}
-                  className="workit-autofill-item"
-                  style={{ flexDirection: "column", alignItems: "flex-start", gap: 6, padding: "10px 12px" }}
+                  className="workit-suggestion-card"
                   data-testid={`answer-suggestion-${suggestion.fieldId}`}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text)" }}>
+                  <div className="workit-suggestion-header">
+                    <span className="workit-suggestion-title">
                       {suggestion.question}
                     </span>
-                    <span className="workit-chip" style={{ fontSize: 11 }}>
+                    <span className="workit-chip">
                       {Math.round(suggestion.similarityScore * 100)}% match
                     </span>
                   </div>
                   <p
-                    style={{
-                      fontSize: 12,
-                      color: "var(--text-muted)",
-                      margin: 0,
-                      lineHeight: 1.4,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
+                    className="workit-suggestion-body"
                     title={suggestion.matchedAnswer.answerText}
                   >
                     {suggestion.matchedAnswer.answerText}
                   </p>
-                  <div style={{ marginTop: 4, width: "100%", display: "flex", justifyContent: "flex-end" }}>
+                  <div className="workit-suggestion-footer">
                     {suggestion.isFilled ? (
                       <span className="workit-chip is-green" data-testid={`answer-filled-${suggestion.fieldId}`}>
                         Filled & verified ✓
@@ -555,8 +588,7 @@ export function ContextPopup({ browserContext, onClose }: ContextPopupProps) {
                     ) : (
                       <button
                         type="button"
-                        className="workit-primary-btn"
-                        style={{ padding: "6px 14px", fontSize: 12 }}
+                        className="workit-secondary-btn"
                         data-testid="btn-use-answer"
                         onClick={() => handleUseAnswer(suggestion)}
                       >

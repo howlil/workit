@@ -9,6 +9,7 @@ import type { D1DatabaseLike } from "@workit/db";
 import {
   getOpportunityService,
   getProfileService,
+  getApplicationService,
   getAnswerService,
   getEvidenceService,
   getSearchService,
@@ -17,6 +18,7 @@ import {
 export function createWorkerMcpServices(db: D1DatabaseLike): McpServices {
   const oppService = getOpportunityService(db);
   const profileService = getProfileService(db);
+  const appService = getApplicationService(db);
   const ansService = getAnswerService(db);
   const evidenceService = getEvidenceService(db);
   const searchService = getSearchService(db);
@@ -54,6 +56,12 @@ export function createWorkerMcpServices(db: D1DatabaseLike): McpServices {
         return res.results.filter((r) => r.type === scope);
       }
       return res.results;
+    },
+    async startApplication(userId, opportunityId) {
+      return appService.start(userId, opportunityId);
+    },
+    async confirmSubmission(userId, applicationId, data) {
+      return appService.confirmSubmission(userId, applicationId, data);
     },
   };
 }

@@ -553,12 +553,18 @@ export class WorkitApiClient {
         },
         body: JSON.stringify({ opportunityId }),
       });
-      if (res.ok) {
-        const data = (await res.json()) as StartApplicationResponse;
-        await this.updateLocalOpportunityState(opportunityId, "applying");
-        return data;
+      if (!res.ok) {
+        const errorData = (await res.json().catch(() => ({}))) as any;
+        throw new Error(errorData.error || `Failed to start application (${res.status})`);
       }
-    } catch {
+      const data = (await res.json()) as StartApplicationResponse;
+      await this.updateLocalOpportunityState(opportunityId, "applying");
+      return data;
+    } catch (err: any) {
+      // If server returned an explicit error response, propagate it
+      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError")) {
+        throw err;
+      }
       // Backend offline; fall through to local fallback
     }
 
@@ -602,14 +608,20 @@ export class WorkitApiClient {
         },
         body: JSON.stringify(req),
       });
-      if (res.ok) {
-        const data = (await res.json()) as ConfirmSubmissionResponse;
-        if (opportunityId) {
-          await this.updateLocalOpportunityState(opportunityId, "applied");
-        }
-        return data;
+      if (!res.ok) {
+        const errorData = (await res.json().catch(() => ({}))) as any;
+        throw new Error(errorData.error || `Failed to confirm submission (${res.status})`);
       }
-    } catch {
+      const data = (await res.json()) as ConfirmSubmissionResponse;
+      if (opportunityId) {
+        await this.updateLocalOpportunityState(opportunityId, "applied");
+      }
+      return data;
+    } catch (err: any) {
+      // If server returned an explicit error response, propagate it
+      if (err.message && !err.message.includes("Failed to fetch") && !err.message.includes("NetworkError")) {
+        throw err;
+      }
       // Backend offline; fall through to local fallback
     }
 
