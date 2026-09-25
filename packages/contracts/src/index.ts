@@ -50,3 +50,9 @@ export type {
   ConfirmResumeDraftResponse,
   ListResumesResponse,
 } from "./resume.js";
+export type {
+  SearchResultType,
+  SearchResultItem,
+  GlobalSearchResponse,
+} from "./search.js";
+

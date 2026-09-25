@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import type { Opportunity } from "@workit/domain";
-import type { OpportunityState } from "@workit/contracts";
+import type { OpportunityState, SearchResultItem } from "@workit/contracts";
 import { workitApiClient, type StoredOpportunityItem } from "../runtime/api-client";
 import { Sidebar, type WorkspaceView } from "./Sidebar";
 import { JobsTable } from "./JobsTable";
 import { SelectedJobPreview } from "./SelectedJobPreview";
 import { ProfileView } from "./ProfileView";
 import { AnswersView } from "./AnswersView";
+import { GlobalSearchModal } from "./GlobalSearchModal";
+
 
 type FilterTab = "all" | OpportunityState;
 
@@ -26,6 +28,18 @@ export function WorkspaceApp() {
   const [selectedItem, setSelectedItem] = useState<StoredOpportunityItem | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
 
   const fetchOpportunities = async (filter: FilterTab) => {
     setIsLoading(true);
@@ -62,13 +76,26 @@ export function WorkspaceApp() {
     }
   };
 
+  const handleSelectSearchResult = (result: SearchResultItem) => {
+    if (result.type === "opportunity") {
+      setCurrentView("jobs");
+      handleSelect(result.id);
+    } else if (result.type === "answer") {
+      setCurrentView("answers");
+    } else if (result.type === "profile") {
+      setCurrentView("profile");
+    }
+  };
+
   return (
     <div className="workspace-layout">
       <Sidebar
         activeCount={opportunities.length}
         currentView={currentView}
         onSelectView={setCurrentView}
+        onOpenSearch={() => setIsSearchOpen(true)}
       />
+
 
       <main className="workspace-main">
         {currentView === "jobs" ? (
@@ -136,6 +163,13 @@ export function WorkspaceApp() {
           </>
         )}
       </main>
+
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onSelectResult={handleSelectSearchResult}
+      />
     </div>
   );
 }
+

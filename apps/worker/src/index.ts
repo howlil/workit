@@ -13,12 +13,15 @@ import { ApplicationService } from "./services/application.js";
 import { AnswerService } from "./services/answers.js";
 import { EvidenceService } from "./services/evidence.js";
 import { ResumeService } from "./services/resume.js";
+import { SearchService } from "./services/search.js";
 import { createOpportunityRouter } from "./http/opportunities.js";
 import { createProfileRouter } from "./http/profile.js";
 import { createApplicationRouter } from "./http/application.js";
 import { createAnswerRouter } from "./http/answers.js";
 import { createEvidenceRouter } from "./http/evidence.js";
 import { createResumeRouter } from "./http/resume.js";
+import { createSearchRouter } from "./http/search.js";
+
 
 type Bindings = {
   DB?: D1DatabaseLike;
@@ -75,7 +78,15 @@ export function getResumeService(db: D1DatabaseLike): ResumeService {
   return new ResumeService(resumeRepo, profileRepo);
 }
 
+export function getSearchService(db: D1DatabaseLike): SearchService {
+  const oppRepo = new D1OpportunityRepository(db);
+  const ansRepo = new D1AnswerMemoryRepository(db);
+  const profileRepo = new D1ProfileRepository(db);
+  return new SearchService(oppRepo, ansRepo, profileRepo);
+}
+
 // Memory fallback database for development / tests without active D1 binding
+
 class MemoryD1Database implements D1DatabaseLike {
   private rows = {
     opportunities: new Map<string, any>(),
@@ -422,12 +433,19 @@ const resumeRouter = createResumeRouter((c) => {
   return getResumeService(db);
 });
 
+const searchRouter = createSearchRouter((c) => {
+  const db = c.env?.DB || sharedDevDb;
+  return getSearchService(db);
+});
+
 app.route("/api/opportunities", opportunityRouter);
 app.route("/api/profile", profileRouter);
 app.route("/api/applications", applicationRouter);
 app.route("/api/answers", answerRouter);
 app.route("/api/evidence", evidenceRouter);
 app.route("/api/resume", resumeRouter);
+app.route("/api/search", searchRouter);
+
 
 export default app;
 

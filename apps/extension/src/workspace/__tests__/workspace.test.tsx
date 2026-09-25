@@ -72,7 +72,8 @@ describe("S4 — Jobs Workspace Components", () => {
       });
 
       const searchNav = container.querySelector('[data-testid="nav-search"]');
-      expect(searchNav?.className).toContain("is-disabled");
+      expect(searchNav).not.toBeNull();
+      expect(searchNav?.className).not.toContain("is-disabled");
 
       const profileNav = container.querySelector<HTMLElement>('[data-testid="nav-profile"]');
       expect(profileNav).not.toBeNull();

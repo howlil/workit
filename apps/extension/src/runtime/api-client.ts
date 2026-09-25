@@ -24,7 +24,10 @@ import type {
   ConfirmResumeDraftResponse,
   ResumeDraftProfile,
   ResumeArtifact,
+  SearchResultItem,
+  GlobalSearchResponse,
 } from "@workit/contracts";
+
 import {
   type Opportunity,
   type JobSnapshot,
@@ -981,7 +984,111 @@ export class WorkitApiClient {
       localStorage.setItem(key, JSON.stringify(resumes));
     }
   }
+
+  // --- Global Search (S12) ---
+
+  async searchGlobal(query: string, userId = "usr_default"): Promise<SearchResultItem[]> {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+
+    try {
+      const res = await fetch(`${this.baseUrl}/api/search?q=${encodeURIComponent(query)}`, {
+        headers: { "x-user-id": userId },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as GlobalSearchResponse;
+        return data.results;
+      }
+    } catch {
+      // Fallback to local search
+    }
+
+    const results: SearchResultItem[] = [];
+
+    // 1. Search local opportunities
+    const opps = await this.listLocalOpportunities();
+    for (const opp of opps) {
+      if (
+        opp.title.toLowerCase().includes(q) ||
+        opp.company.toLowerCase().includes(q) ||
+        opp.location?.toLowerCase().includes(q) ||
+        opp.state.toLowerCase().includes(q)
+      ) {
+        results.push({
+          id: opp.id,
+          type: "opportunity",
+          title: opp.title,
+          subtitle: `${opp.company}${opp.location ? ` • ${opp.location}` : ""} (${opp.state})`,
+          metadata: { state: opp.state, company: opp.company },
+        });
+      }
+    }
+
+    // 2. Search local answers
+    const answers = await this.getLocalAnswers(userId);
+    for (const ans of answers) {
+      if (
+        ans.questionText.toLowerCase().includes(q) ||
+        ans.answerText.toLowerCase().includes(q) ||
+        ans.category?.toLowerCase().includes(q)
+      ) {
+        results.push({
+          id: ans.id,
+          type: "answer",
+          title: ans.questionText,
+          subtitle: ans.category ? `Category: ${ans.category}` : "Answer Memory",
+          snippet: ans.answerText.length > 80 ? `${ans.answerText.slice(0, 80)}...` : ans.answerText,
+        });
+      }
+    }
+
+    // 3. Search local profile
+    const profile = await this.getLocalProfile(userId);
+    if (
+      profile.profile.fullName.toLowerCase().includes(q) ||
+      profile.profile.summary?.toLowerCase().includes(q)
+    ) {
+      results.push({
+        id: profile.profile.id,
+        type: "profile",
+        title: profile.profile.fullName,
+        subtitle: "Profile Identity & Summary",
+        snippet: profile.profile.summary,
+      });
+    }
+
+    for (const exp of profile.experiences) {
+      const matchExp =
+        exp.company.toLowerCase().includes(q) ||
+        exp.title.toLowerCase().includes(q) ||
+        exp.facts.some((f) => f.factText.toLowerCase().includes(q));
+
+      if (matchExp) {
+        const matchingFact = exp.facts.find((f) => f.factText.toLowerCase().includes(q));
+        results.push({
+          id: exp.id,
+          type: "profile",
+          title: `${exp.title} at ${exp.company}`,
+          subtitle: `Experience (${exp.startDate} - ${exp.isCurrent ? "Present" : exp.endDate || ""})`,
+          snippet: matchingFact ? matchingFact.factText : exp.description,
+        });
+      }
+    }
+
+    const matchingSkills = profile.skills.filter((s) => s.name.toLowerCase().includes(q));
+    if (matchingSkills.length > 0) {
+      results.push({
+        id: "profile_skills",
+        type: "profile",
+        title: `Skills: ${matchingSkills.map((s) => s.name).join(", ")}`,
+        subtitle: `${matchingSkills.length} matching skill${matchingSkills.length > 1 ? "s" : ""}`,
+      });
+    }
+
+    return results;
+  }
 }
+
 
 
 export const workitApiClient = new WorkitApiClient();

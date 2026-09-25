@@ -4,9 +4,10 @@ interface SidebarProps {
   activeCount: number;
   currentView: WorkspaceView;
   onSelectView: (view: WorkspaceView) => void;
+  onOpenSearch?: () => void;
 }
 
-export function Sidebar({ activeCount, currentView, onSelectView }: SidebarProps) {
+export function Sidebar({ activeCount, currentView, onSelectView, onOpenSearch }: SidebarProps) {
   return (
     <aside className="workspace-sidebar" data-testid="workspace-sidebar">
       <div className="sidebar-header">
@@ -84,7 +85,14 @@ export function Sidebar({ activeCount, currentView, onSelectView }: SidebarProps
           <span>Answers</span>
         </div>
 
-        <div className="nav-item is-disabled" title="Coming in S12" data-testid="nav-search">
+        <div
+          className="nav-item"
+          title="Global Search (⌘K)"
+          data-testid="nav-search"
+          onClick={onOpenSearch}
+          role="button"
+          tabIndex={0}
+        >
           <svg
             width="16"
             height="16"
@@ -105,3 +113,4 @@ export function Sidebar({ activeCount, currentView, onSelectView }: SidebarProps
     </aside>
   );
 }
+

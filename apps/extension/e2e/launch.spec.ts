@@ -957,3 +957,87 @@ test.describe("S11 — Resume Autofill E2E", () => {
   });
 });
 
+test.describe("S12 — Global Search E2E", () => {
+  test("open command palette via search nav or shortcut -> query opportunities and answers -> filter by category -> navigate to selected item", async () => {
+    const extensionPath = path.resolve(__dirname, "../.output/chrome-mv3");
+
+    const context = await chromium.launchPersistentContext("", {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${extensionPath}`,
+        `--load-extension=${extensionPath}`,
+      ],
+    });
+
+    // 1. Capture a job first so we have data in the store
+    const page = await context.newPage();
+    await page.goto(`http://localhost:${serverPort}/jobs/json-ld-complete.html`);
+
+    const workitHost = page.locator("#workit-root");
+    await expect(workitHost).toBeAttached({ timeout: 5000 });
+
+    const launcher = workitHost.locator('[data-testid="workit-launcher"]');
+    await launcher.click();
+
+    const saveBtn = workitHost.locator('[data-testid="workit-save-job-btn"]');
+    await expect(saveBtn).toBeVisible({ timeout: 5000 });
+    await saveBtn.click();
+    await expect(workitHost.locator('[data-testid="workit-saved-view"]')).toBeVisible({ timeout: 5000 });
+
+    // 2. Open Workspace
+    let [background] = context.serviceWorkers();
+    if (!background) {
+      background = await context.waitForEvent("serviceworker");
+    }
+    const extensionId = background.url().split("/")[2];
+
+    const wsPage = await context.newPage();
+    await wsPage.goto(`chrome-extension://${extensionId}/workspace.html`);
+
+    // 3. Open Global Search via Sidebar Search button
+    const searchNav = wsPage.locator('[data-testid="nav-search"]');
+    await expect(searchNav).toBeVisible({ timeout: 5000 });
+    await searchNav.click();
+
+    // 4. Assert Command Palette Modal appears
+    const modal = wsPage.locator('[data-testid="global-search-modal"]');
+    await expect(modal).toBeVisible({ timeout: 5000 });
+
+    const searchInput = wsPage.locator('[data-testid="global-search-input"]');
+    await expect(searchInput).toBeVisible();
+
+    // 5. Query for the saved job ("Software")
+    await searchInput.fill("Software");
+
+    // 6. Assert results list contains the job
+    const resultsList = wsPage.locator('[data-testid="search-results-list"]');
+    await expect(resultsList).toBeVisible({ timeout: 5000 });
+
+    const resultItems = wsPage.locator('[data-testid="search-result-item"]');
+    await expect(resultItems.first()).toBeVisible({ timeout: 5000 });
+    await expect(resultsList).toContainText("Software Engineer");
+    await expect(resultsList).toContainText("Example Corp");
+
+    // 7. Filter by Jobs scope pill
+    await wsPage.click('[data-testid="search-filter-opportunity"]');
+    await expect(resultsList).toContainText("Software Engineer");
+
+    // 8. Click result item -> modal closes and navigates to SelectedJobPreview
+    await resultItems.first().click();
+    await expect(modal).toBeHidden({ timeout: 5000 });
+
+    const preview = wsPage.locator('[data-testid="selected-job-preview"]');
+    await expect(preview).toBeVisible({ timeout: 5000 });
+    await expect(wsPage.locator('[data-testid="preview-title"]')).toHaveText("Software Engineer");
+
+    // 9. Re-open via keyboard shortcut (Control+k) and close via Escape
+    await wsPage.keyboard.press("Control+k");
+    await expect(modal).toBeVisible({ timeout: 5000 });
+
+    await wsPage.keyboard.press("Escape");
+    await expect(modal).toBeHidden({ timeout: 5000 });
+
+    await context.close();
+  });
+});
+
