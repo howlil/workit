@@ -75,6 +75,9 @@ importers:
       '@workit/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@workit/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@workit/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -124,6 +127,28 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
+
+  packages/mcp:
+    dependencies:
+      '@workit/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@workit/db':
+        specifier: workspace:*
+        version: link:../db
+      '@workit/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@workit/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.1
+        version: 3.2.7(@types/node@26.6.2)(happy-dom@20.14.5)(jiti@2.7.0)(lightningcss@1.33.0)
 
   packages/shared:
     devDependencies:

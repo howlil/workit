@@ -13,7 +13,8 @@
     "@workit/domain": "workspace:*",
     "@workit/contracts": "workspace:*",
     "@workit/db": "workspace:*",
-    "@workit/shared": "workspace:*"
+    "@workit/shared": "workspace:*",
+    "@workit/mcp": "workspace:*"
   },
   "devDependencies": {
     "wrangler": "^4.18.0",

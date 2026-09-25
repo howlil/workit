@@ -21,6 +21,7 @@ import { createAnswerRouter } from "./http/answers.js";
 import { createEvidenceRouter } from "./http/evidence.js";
 import { createResumeRouter } from "./http/resume.js";
 import { createSearchRouter } from "./http/search.js";
+import { createMcpRouter } from "./http/mcp.js";
 
 
 type Bindings = {
@@ -438,6 +439,10 @@ const searchRouter = createSearchRouter((c) => {
   return getSearchService(db);
 });
 
+const mcpRouter = createMcpRouter((c) => {
+  return c.env?.DB || sharedDevDb;
+});
+
 app.route("/api/opportunities", opportunityRouter);
 app.route("/api/profile", profileRouter);
 app.route("/api/applications", applicationRouter);
@@ -445,6 +450,8 @@ app.route("/api/answers", answerRouter);
 app.route("/api/evidence", evidenceRouter);
 app.route("/api/resume", resumeRouter);
 app.route("/api/search", searchRouter);
+app.route("/api/mcp", mcpRouter);
+app.route("/mcp", mcpRouter);
 
 
 export default app;
